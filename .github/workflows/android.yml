@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: tools/desktop/go.mod
+      - name: Install Python dependencies
+        run: pip install pyaxml
       - name: Android app builds (throwaway key)
         run: tools/android/build_apk.sh 0.0.0-check "$RUNNER_TEMP/check.apk"
   release:
