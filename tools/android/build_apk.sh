@@ -24,6 +24,7 @@ DESKTOP="$HERE/../desktop"
 OUT=$(realpath -m "${2:-mpc-installer-$VERSION-android.apk}")
 B=$(mktemp -d)
 trap 'rm -rf "$B"' EXIT
+mkdir -p "$(dirname "$OUT")"
 MIN_SDK=23
 
 # versionCode: 0.5.4 -> 504, 1.2.13 -> 10213 (a newer version always has a larger code)
