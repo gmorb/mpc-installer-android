@@ -1,0 +1,10 @@
+tools/desktop/desktop
+tools/desktop/mpc-installer*
+*.apk
+*.idsig
+dist/
+*.p12
+*.jks
+*.keystore
+*.exe
+.DS_Store

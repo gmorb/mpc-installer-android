@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The MPC plugin installer for Android phones and tablets: tools/android/README.md. versionCode, versionName, minSdk and
+     targetSdk are filled in by build_apk.sh. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.sd88me.mpcinstaller">
+
+    <!-- SSH to the MPC on the local network, the catalog and plugin downloads -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- read the current network's DNS servers for the installer (dns.go) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- InstallService: keeps the app's network while it is open, also when another app is in front (Android 15+ cuts a
+         background app's connections, which aborted copies: "software caused connection abort") -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- extractNativeLibs: the installer runs as its own program, which Android only allows from the extracted
+         native-library folder. usesCleartextTraffic: the page is served over plain http on 127.0.0.1 inside the phone. -->
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:extractNativeLibs="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|fontScale|locale">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- foregroundServiceType: build_apk.sh adds it after aapt when compiling against an android.jar older than API 29 -->
+        <service
+            android:name=".InstallService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+    </application>
+</manifest>

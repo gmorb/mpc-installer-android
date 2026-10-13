@@ -1,0 +1,13 @@
+MPC plugin installer
+
+1. Start "mpc-installer" (double-click it, or run it in a terminal). It prints a link and opens it in your browser.
+2. In the page: enter your device's IP address (and its password, if it has one), pick plugins, press Install.
+   Save your project first: MPC is restarted.
+
+The first time, your system will warn that the program is from an unknown developer (it is not signed):
+  Windows: "Windows protected your PC" -> More info -> Run anyway.
+  macOS:   right-click the file -> Open -> Open (or: xattr -d com.apple.quarantine mpc-installer).
+  Linux:   chmod +x mpc-installer
+
+Everything runs on your computer. Your device's address and password are not saved.
+Source and documentation: https://github.com/sd88me/mpc-vst-plugins/tree/main/tools/desktop

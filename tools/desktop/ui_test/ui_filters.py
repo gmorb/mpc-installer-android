@@ -1,0 +1,119 @@
+import json, os, re, subprocess, sys, time
+from playwright.sync_api import sync_playwright
+# a synthetic catalog of 41 plugins (only the listing is used; nothing is downloaded)
+devs = ["sd88me", "acme", "zeta audio", "jacob", "mellow"]
+words = ["reverb", "delay", "bass", "pad", "drum", "filter", "chorus", "sampler"]
+plugins = []
+for i in range(40):
+    kind = "effect" if i % 3 == 0 else "instrument"
+    plugins.append({"id": "plug-%02d" % i, "name": "Plug %02d %s" % (i, words[i % 8].title()), "author": devs[i % 5], "kind": kind,
+        "summary": "A %s %s number %d" % (words[i % 8], "effect" if kind == "effect" else "synth", i), "distribution": "release", "latest": "1.0.0",
+        "versions": [{"version": "1.0.0", "size": 100000 + i * 37000, "sha256": "%064x" % i, "url": "https://example.com/p%d.zip" % i, "channel": "stable",
+                      "yanked": False, "defer": True, "param_compat": 1, "manifest": {"skin": "%s - VST - Plug %02d" % (devs[i % 5], i)}}]})
+plugins.append({"id": "acid", "name": "Acid", "author": "sd88me", "kind": "instrument", "summary": "TB-303-style acid bassline sequencer", "distribution": "release",
+    "latest": "1.2.0", "versions": [{"version": "1.2.0", "size": 2000000, "sha256": "%064x" % 999, "url": "https://example.com/acid.zip", "channel": "stable",
+    "yanked": False, "defer": False, "param_compat": 1, "manifest": {"skin": "sd88me - VST - Acid"}}]})
+for n in ("Eucl", "Arp"):
+    plugins.append({"id": "midi-" + n.lower(), "name": "Midi " + n, "author": "midi dev", "kind": "instrument", "role": "midi", "summary": "A midi sequencer " + n, "distribution": "release", "latest": "1.0.0",
+        "versions": [{"version": "1.0.0", "size": 50000, "sha256": "%064x" % (1000 + len(n)), "url": "https://example.com/%s.zip" % n, "channel": "stable", "yanked": False, "defer": True, "param_compat": 1,
+                      "manifest": {"skin": "midi dev - VST - Midi " + n}}]})
+os.makedirs("/tmp/bigcat", exist_ok=True)
+json.dump({"schema": 1, "plugins": plugins}, open("/tmp/bigcat/catalog.json", "w"))
+web = subprocess.Popen(["python3", "-m", "http.server", "8800", "--bind", "127.0.0.1", "--directory", "/tmp/bigcat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+log = open("/out/app2.log", "w")
+app = subprocess.Popen(["/out/mpc-installer", "--no-browser", "--port", "8770", "--catalog", "http://127.0.0.1:8800/catalog.json"], stdout=log, stderr=subprocess.STDOUT)
+time.sleep(1.5)
+link = re.search(r"http://127\.0\.0\.1:8770/\?t=\w+", open("/out/app2.log").read()).group(0)
+fails = []
+def check(name, cond, extra=""):
+    print(("PASS " if cond else "FAIL ") + name + ((" " + str(extra)) if extra and not cond else ""))
+    if not cond: fails.append(name)
+try:
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        ctx = b.new_context(bypass_csp=True, viewport={"width": 1000, "height": 900}); pg = ctx.new_page()
+        errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
+        pg.goto(link)
+        check("toolbar hidden until connected", pg.locator("#tools").is_hidden())
+        pg.fill("#host", "127.0.0.1"); pg.fill("#pw", "secret"); pg.click("#connect")
+        pg.wait_for_selector("#cat input[type=checkbox]", timeout=30000)
+        rows = lambda: pg.locator("#cat li").count()
+        count = lambda: pg.locator("#catcount").text_content()
+        check("opens on Instruments: 27 listed", rows() == 27, rows())
+        check("tabs with counts", pg.locator("#ktabs button").all_text_contents() == ["Instruments27", "MIDI2", "Effects14", "Addins0", "All43"], pg.locator("#ktabs button").all_text_contents())
+        seltext = lambda i: pg.eval_on_selector(i, "e => e.options[e.selectedIndex] ? e.options[e.selectedIndex].text : '(nothing selected)'")
+        check("dropdowns start on their 'all' choice", [seltext("#f-dev"), seltext("#f-show")] == ["All developers", "All plugins"], [seltext("#f-dev"), seltext("#f-show")])
+        check("count line", count().startswith("Showing 27 of 27 instruments"), count())
+        check("clear-filters hidden when nothing is filtered", pg.locator("#resetf").is_hidden())
+        pg.fill("#q", "reverb")
+        n = rows(); check("search narrows the list", 0 < n < 27 and all("reverb" in t.lower() for t in pg.locator("#cat li").all_text_contents()), n)
+        check("count follows", count().startswith("Showing %d of 27" % n), count())
+        check("tab counts follow the search", sum(int(re.sub(r"\D", "", t)) for t in pg.locator("#ktabs .n").all_text_contents()) >= n and int(pg.locator("#kt-instrument .n").text_content()) == n)
+        check("clear filters appears", pg.locator("#resetf").is_visible())
+        pg.fill("#q", "")
+        pg.click("#kt-effect")
+        texts = pg.locator("#cat li").all_text_contents()
+        check("effects tab", len(texts) == 14 and all("effect" in t.lower() for t in texts) and pg.locator("#kt-effect").get_attribute("aria-selected") == "true", len(texts))
+        pg.click("#kt-midi"); mt = pg.locator("#cat li").all_text_contents()
+        check("midi tab holds only role=midi plugins, listed once", len(mt) == 2 and all("midi sequencer" in x for x in mt) and "2 of 2 MIDI plugins" in count(), (len(mt), count()))
+        pg.click("#kt-all"); check("All tab lists everything", rows() == 43 and "43 of 43 plugins" in count(), (rows(), count()))
+        pg.click("#kt-addin"); check("empty addins tab says so", "no addins" in pg.locator("#cat").text_content().lower())
+        pg.click("#kt-instrument")
+        pg.select_option("#f-dev", "zeta audio")
+        texts = pg.locator("#cat li").all_text_contents()
+        check("developer filter", len(texts) == 6 and all("zeta audio" in t for t in texts), len(texts))
+        pg.click("#resetf")
+        check("clear filters resets", rows() == 27 and pg.locator("#resetf").is_hidden() and pg.input_value("#q") == "")
+        pg.select_option("#f-show", "upd")
+        t = pg.locator("#cat li").all_text_contents()
+        check("updates view: only Acid, with the versions", len(t) == 1 and "Acid" in t[0] and "v1.0.2" in t[0] and "v1.2.0" in t[0], t)
+        pg.select_option("#f-show", "on")
+        check("on the device view", rows() >= 1 and "Acid" in pg.locator("#cat li").first.text_content())
+        pg.select_option("#f-show", "new")
+        check("not on the device view", rows() == 26, rows())
+        pg.select_option("#f-show", label="All plugins")
+        pg.select_option("#f-sort", "dev")
+        authors = [re.search(r" by (.+?) ·", t).group(1) for t in pg.locator("#cat li .d").all_text_contents()]
+        check("sort by developer", authors == sorted(authors, key=str.lower), authors[:6])
+        pg.select_option("#f-sort", "size")
+        sizes = pg.locator("#cat li .d").all_text_contents()
+        check("sort by size runs without error", len(sizes) == 27)
+        pg.select_option("#f-sort", "name")
+        # selection survives filtering
+        pg.check("#c_plug-04"); pg.check("#c_plug-07")
+        check("sticky bar shows the selection", pg.locator("#selbar").is_visible() and "2 plugins selected" in pg.locator("#selcount").text_content())
+        pg.fill("#q", "acid")
+        check("hidden selections are still counted", "2 plugins selected" in pg.locator("#selcount").text_content())
+        pg.fill("#q", "")
+        pg.select_option("#f-show", "sel")
+        ids = [pg.locator("#cat li input").nth(i).get_attribute("id") for i in range(rows())]
+        check("only-ticked view", sorted(ids) == ["c_plug-04", "c_plug-07"], ids)
+        pg.select_option("#f-show", label="All plugins")
+        pg.evaluate("window.scrollTo(0, 0)")
+        check("the bar is on screen without scrolling", pg.locator("#selbar").is_visible() and pg.locator("#selbar").bounding_box()["y"] < 900)
+        check("a release with an older installer is marked", "restarts MPC itself" in pg.locator("#cat li").first.text_content() and pg.locator("#cat li", has_text="restarts MPC itself").count() == 1)
+        pg.check("#c_acid")
+        pg.click("#go2"); pg.wait_for_selector("#dlg[open]")
+        dtx = pg.locator("#dlgtxt").text_content()
+        check("the dialog gives the exact restart count from the catalog flags", "restart 2 times" in dtx and "at least" not in dtx, dtx)
+        pg.click("#no"); pg.uncheck("#c_acid")
+        pg.click("#go2"); pg.wait_for_selector("#dlg[open]")
+        check("the bar's Install opens the confirmation", "Plug 04" in pg.locator("#dlgtxt").text_content() or "plug-04" in pg.locator("#dlgtxt").text_content().lower() or "About to install" in pg.locator("#dlgtxt").text_content())
+        pg.click("#no")
+        pg.click("#selclear")
+        check("Clear unticks everything and hides the bar", pg.locator("#selbar").is_hidden() and pg.locator("#cat input:checked").count() == 0)
+        pg.fill("#q", "zzz-no-such")
+        check("empty result explains itself", "match" in pg.locator("#cat").text_content() and "other tabs" in pg.locator("#cat").text_content() in pg.locator("#cat").text_content())
+        pg.fill("#q", "")
+        pg.screenshot(path="/out/ui-5-filters.png", full_page=False)
+        m = b.new_context(bypass_csp=True, viewport={"width": 390, "height": 800}, device_scale_factor=2).new_page()
+        m.goto(link); m.fill("#host", "127.0.0.1"); m.fill("#pw", "secret"); m.click("#connect"); m.wait_for_selector("#cat input[type=checkbox]", timeout=30000)
+        m.check("#c_plug-04")
+        check("no horizontal scroll on a phone", not m.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth"))
+        m.screenshot(path="/out/ui-6-phone.png")
+        check("no page errors", not errs, errs)
+        b.close()
+finally:
+    app.terminate(); web.terminate()
+print("FILTERS FAILED: %s" % fails if fails else "FILTERS ALL PASSED")
+sys.exit(1 if fails else 0)

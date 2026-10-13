@@ -1,0 +1,72 @@
+# Build the Android APK on PRs; attach it to a release when ANDROID_KEYSTORE_B64 and ANDROID_KEYSTORE_PASS exist
+name: Android installer
+on:
+  push:
+    branches: [main]
+    paths: ['tools/android/**', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['tools/android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version, e.g. 0.1.0
+        required: true
+      changes:
+        description: What is new in this version (one line each, separated by | ), shown at the top of the release notes
+        required: false
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Android app builds (throwaway key)
+        run: tools/android/build_apk.sh 0.0.0-check "$RUNNER_TEMP/check.apk"
+  release:
+    needs: test
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Android app
+        # Signed with the project's own key (secrets ANDROID_KEYSTORE_B64, base64 of a PKCS12 keystore, and
+        # ANDROID_KEYSTORE_PASS; alias "mpc"), so phones can update from one release to the next. Without them the
+        # release goes out without the APK rather than with one signed by a throwaway key. tools/android/README.md.
+        env:
+          VERSION: ${{ inputs.version }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          set -e
+          if [ -z "$KEYSTORE_B64" ]; then echo "::warning::no ANDROID_KEYSTORE_B64 secret: no Android app in this release"; exit 0; fi
+          export KEYSTORE="$RUNNER_TEMP/release.p12" KEY_ALIAS=mpc
+          echo "$KEYSTORE_B64" | base64 -d > "$KEYSTORE"
+          tools/android/build_apk.sh "$VERSION" "dist/mpc-installer-$VERSION-android.apk"
+          rm -f "$KEYSTORE"
+      - name: Checksums
+        run: (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          CHANGES: ${{ inputs.changes }}
+        run: |
+          : > notes.md
+          if [ -n "$CHANGES" ]; then
+            { echo "## What is new"; echo; echo "$CHANGES" | tr '|' '\n' | sed 's/^ *//; /^$/d; s/^/- /'; echo; } >> notes.md
+          fi
+          cat >> notes.md <<EOF
+          The MPC plugin installer for Android: a small app that installs, updates and removes plugins on a modded MPC or Force from your Android device.
+
+          ## Which file do I need?
+
+          | Your device | Download |
+          |---|---|
+          | **Android** phone or tablet (Android 6 or later) | \`mpc-installer-$VERSION-android.apk\` |
+          EOF
+          echo >> notes.md
+          echo "On Android, open the APK and allow your browser or file manager to install apps when it asks. The phone must be on the same Wi-Fi as the MPC." >> notes.md
+          gh release create "v$VERSION" dist/* --draft --target "$GITHUB_SHA" --title "MPC plugin installer for Android v$VERSION" --notes-file notes.md

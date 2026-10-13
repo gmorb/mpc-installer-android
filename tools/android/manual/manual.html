@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>MPC Installer for Android: user manual</title>
+<style>
+@page { size: A4; margin: 18mm 17mm 20mm; }
+body { font: 10.5pt/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #1c1d21; }
+h1 { font-size: 26pt; margin: 0 0 4pt; letter-spacing: -.5pt; }
+h2 { font-size: 15pt; margin: 22pt 0 6pt; padding-top: 8pt; border-top: 2px solid #d63a2f; break-after: avoid; }
+h3 { font-size: 11.5pt; margin: 14pt 0 3pt; break-after: avoid; }
+p, li { orphans: 3; widows: 3; }
+.sub { color: #555; font-size: 12pt; margin: 0 0 14pt; }
+.cover { padding: 38mm 0 0; }
+.cover .ver { color: #d63a2f; font-weight: 700; letter-spacing: 1pt; text-transform: uppercase; font-size: 9pt; }
+.warn { border-left: 4px solid #d63a2f; background: #fbeeec; padding: 8pt 11pt; margin: 10pt 0; break-inside: avoid; }
+.tip { border-left: 4px solid #3b7ddd; background: #eef3fb; padding: 8pt 11pt; margin: 10pt 0; break-inside: avoid; }
+table { border-collapse: collapse; width: 100%; margin: 8pt 0; break-inside: avoid; }
+th, td { border: 1px solid #ccc; padding: 4pt 7pt; text-align: left; vertical-align: top; }
+th { background: #f0f0f2; }
+code { font: 9.5pt ui-monospace, Menlo, Consolas, monospace; background: #f0f0f2; padding: 0 3pt; border-radius: 3px; }
+ol, ul { padding-left: 18pt; }
+li { margin: 2pt 0; }
+figure { margin: 10pt 0; text-align: center; break-inside: avoid; }
+figure img { max-height: 118mm; border: 1px solid #ccc; border-radius: 10px; }
+figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
+.pair { break-inside: avoid; display: flex; gap: 10mm; justify-content: center; }
+.pair figure { margin: 10pt 0; }
+.pair img { max-height: 100mm; }
+.toc li { margin: 3pt 0; }
+.pb { break-before: page; }
+</style></head><body>
+
+<section class="cover">
+<div class="ver">User manual · app version 0.5.10</div>
+<h1>MPC Installer<br>for Android</h1>
+<p class="sub">Install, update and remove VST plugins on a modded Akai MPC or Force from your phone.</p>
+<div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
+<h3>Contents</h3>
+<ol class="toc">
+<li>What you need</li><li>Install the app</li><li>Connect to your MPC</li><li>Choose plugins</li><li>Choose where to install</li><li>Install</li><li>Remove plugins</li><li>Something missing from the plugin list?</li><li>Clean up old backups</li><li>Dark mode and banners</li><li>Troubleshooting</li><li>Good to know</li>
+</ol>
+</section>
+
+<h2 class="pb">1. What you need</h2>
+<ul>
+<li>An Android phone or tablet, Android 6.0 or later (the app is built for Android 16 and works on older versions).</li>
+<li>An Akai MPC OS standalone device that has <b>root SSH access</b> (a modded unit; stock MPC OS does not offer it): Force, MPC Live and Live II, One, X and Key 61. The app refuses a device that is not an MPC OS device.</li>
+<li>The device's <b>IP address</b>, and its root password if it has one. Your router assigns the address, so look it up on the device (network settings) or in your router each time.</li>
+<li>The phone and the MPC on the <b>same Wi-Fi network</b>.</li>
+<li>A <b>card, USB drive or SSD</b> in the MPC, formatted so it can hold symbolic links (ext4 is best). FAT, exFAT and NTFS drives are refused for plugins that need links.</li>
+</ul>
+
+<h2>2. Install the app</h2>
+<ol>
+<li>Download <code>mpc-installer-&lt;version&gt;-android.apk</code> from the project's release page on GitHub, in your phone's browser.</li>
+<li>Open the downloaded file. Android asks whether your browser (or Files app) may install apps: allow it for this one install.</li>
+<li>Tap <b>Install</b>. If Play Protect shows a scan prompt, choose to scan or install anyway.</li>
+<li>Open <b>MPC Installer</b>. The page appears inside the app; there is nothing else to set up.</li>
+</ol>
+<div class="tip"><b>Updating:</b> install the newer APK over the old one. It only works over an app signed with the same key, so use the APK from the same project release. If Android refuses, uninstall the old app first (nothing about your device is stored in it).</div>
+<p>While the app is open it shows a small notification, "MPC Installer is running". That is intentional: it stops Android from cutting the app's Wi-Fi connection when you switch to another app in the middle of a copy.</p>
+
+<h2 class="pb">3. Connect to your MPC</h2>
+<div class="pair"><figure><img src="connect.png"><figcaption>Step 1: connect</figcaption></figure></div>
+<ol>
+<li>Type the MPC's IP address, for example <code>192.168.1.50</code>.</li>
+<li>Type the root password. Leave it empty only if the device's root has no password. Keys are not used on a phone.</li>
+<li>Tap <b>Connect</b>.</li>
+</ol>
+<p>The app shows what it found: the device type, the plugin folders already on it, and the places plugins can go. It also shows the device's <b>key fingerprint</b>. If it changes between sessions for the same MPC, be careful: it can mean you are talking to a different device. Nothing about the device is saved on the phone.</p>
+
+<h2>4. Choose plugins</h2>
+<div class="pair"><figure><img src="choose-light.png"><figcaption>Step 2: choose plugins (example data)</figcaption></figure><figure><img src="choose-dark.png"><figcaption>The same page in dark mode</figcaption></figure></div>
+<p>The list is the catalog's newest stable release of every downloadable plugin. Use the tabs (Instruments, MIDI, Effects, Addins, All), the search box, the developer filter, the sort and the "show" filter (not on the device, on the device, updates available, only the ones you ticked) to find what you want. Tick the plugins; what you ticked stays ticked while you filter. A bar at the bottom shows the count and an <b>Install</b> button.</p>
+<p>You can also add your own release zips with <b>choose zips</b>, which opens the phone's file picker. A zip is checked before it is accepted.</p>
+<p>Plugins already on the device are flagged, and so are updates. Catalog downloads are checked against the catalog's checksums before anything is copied; a mismatch installs nothing.</p>
+
+<h2 class="pb">5. Choose where to install</h2>
+<div class="pair"><figure><img src="where.png"><figcaption>Step 3: the Install to choices (example data)</figcaption></figure></div>
+<p>Under <b>Install to</b> the app lists the drives it found under <code>/media</code> that already have a <code>Synths</code> folder, with the free space on each. Pick one. It is chosen for you when there is only one.</p>
+<h3>No Synths folder yet?</h3>
+<p>If a card or drive has none, the page lists it with a <b>Create Synths folder</b> button. Tap it and the app makes the folder on that drive, then selects it. Install stays off until a place is chosen; the app never installs somewhere you did not pick.</p>
+<h3>The internal drive</h3>
+<p>The internal drive is hidden behind <i>"Use the MPC's internal drive instead (not recommended)"</i>. It is the MPC's built-in flash storage (eMMC): every install, update and file a plugin writes adds wear, and if it fails the MPC itself needs repair. A card, USB drive or SSD is cheap to replace. Open that section and tick <i>"I understand"</i> only if you have no other choice.</p>
+<h3>Notes the app may show</h3>
+<ul>
+<li><b>Not in MPC's content locations:</b> a plugin's screen may not show until you add the folder in MPC's own settings.</li>
+<li><b>Drive not in when MPC starts:</b> its plugins drop out of the plugin list until you register them again (section 8).</li>
+<li><b>noexec:</b> Linux can mount a drive with or without permission to run programs, and the same drive can be mounted either way at different times. The app only notes it and still installs. If a plugin shows only "Load Plugin" in MPC afterwards, restart the MPC with the drive in and register the folders.</li>
+</ul>
+<p>Under the choices there is a tick box, on by default: <b>after installing, register every plugin folder on the device with MPC</b>. This is built into the app, so nothing has to be on the MPC. It adds missing entries to MPC's plugin list, drops broken ones, and backs up MPC's settings first.</p>
+
+<h2>6. Install</h2>
+<ol>
+<li>Tap <b>Install…</b> and read the summary: what will be installed, where, and how many times MPC restarts (usually once).</li>
+<li><b>Save your project on the MPC first.</b> MPC is stopped and started again, and anything unsaved is lost.</li>
+<li>Tap <b>Install</b>. The page scrolls down by itself to the progress area.</li>
+<li>Keep the app open until it says <i>"Done. MPC is starting again: the new plugins are in the plugin list."</i></li>
+</ol>
+<div class="pair"><figure><img src="progress.png"><figcaption>The progress area after a finished install (example data)</figcaption></figure></div>
+<p>The app copies every package to a private folder on the device, stops MPC once, runs each plugin's installer, registers the plugin folders, starts MPC once and removes the temporary copies. MPC is started again even if something fails, and nothing after a failing plugin is installed.</p>
+<h3>If the connection drops</h3>
+<p>Phones sometimes cut a connection (Wi-Fi sleep, a VPN, switching apps). If it drops during the copy, the app reconnects, checks that the device's key is unchanged, and copies once more. Until every copy has finished, nothing is installed and MPC has not been stopped.</p>
+
+<h2>7. Remove plugins</h2>
+<p>Open <b>4 Remove plugins</b> (tap <b>Show</b>). It lists the plugin folders on the device. Tick the ones to remove and tap <b>Remove…</b>. The app stops MPC once, backs up MPC's settings, takes the plugin out of the plugin list, deletes the plugin's folder and starts MPC again.</p>
+<ul>
+<li><b>Your own files are kept:</b> ROMs, kits and dumps that the plugin's manifest names as user data are not deleted.</li>
+<li>A plugin the app cannot identify (not from the catalog and not from a zip you added in this session) is listed but cannot be removed from here, because the app cannot tell which files in the folder are yours. Add its release zip to manage it, or remove it by hand.</li>
+<li>Addins (libraries MPC loads at start-up) are listed last. Removing one runs its own uninstaller, which also takes it out of MPC's start-up list.</li>
+</ul>
+
+<h2>8. Something missing from the plugin list?</h2>
+<p>Installing already registers its plugins, so most people never need this box. Open it (tap <b>Show</b>) when a plugin folder is on the device but MPC does not show it. Typical causes: you copied a folder in by hand, or MPC forgot it because a card was out when it started.</p>
+<p>The box shows how many folders are waiting. Tap <b>Register…</b>: the app adds the missing entries, drops entries whose plugin file is gone, leaves everything else alone, backs up MPC's settings first, and restarts MPC once.</p>
+
+<h2>9. Clean up old backups</h2>
+<p>Every install, removal and registering leaves a copy of MPC's settings file (<code>MPC.settings.bak-…</code>) on the device. They are small but nothing deletes them. In <b>5 Clean up old backups</b> choose how many of the newest to keep (10 is a good number) and tap <b>Delete older backups…</b>. The newest backup is never deleted, and MPC is not restarted.</p>
+
+<h2>10. Dark mode and banners</h2>
+<ul>
+<li><b>Theme:</b> the app follows your phone's light or dark setting. The <b>Theme</b> button forces light, dark or back to automatic. The choice is remembered.</li>
+<li><b>Banners:</b> each catalog plugin shows its banner picture in the list. The pictures come from the web, so turn them off with the <b>Banners</b> switch if you are on mobile data. This is remembered too.</li>
+</ul>
+
+<h2>11. Troubleshooting</h2>
+<table>
+<tr><th style="width:36%">You see</th><th>Try this</th></tr>
+<tr><td>Connect times out</td><td>Wrong IP, the MPC is asleep, or the phone is on another network (mobile data, guest Wi-Fi). Look the IP up again.</td></tr>
+<tr><td>Permission denied</td><td>Wrong password, or this unit has no root SSH access.</td></tr>
+<tr><td>"Not an MPC OS device"</td><td>The address belongs to another computer. Check the IP.</td></tr>
+<tr><td>Install is greyed out</td><td>No install location is chosen. Pick a drive, or create a Synths folder on one (section 5).</td></tr>
+<tr><td>"software caused connection abort"</td><td>The phone cut the connection. The app reconnects and retries once by itself. If it still fails, stay in the app, keep the screen on, and try again. Nothing is installed after a failed copy.</td></tr>
+<tr><td>Plugin only shows "Load Plugin"</td><td>Restart the MPC with the drive in, then register the folders (section 8). The drive may have been mounted noexec at that moment.</td></tr>
+<tr><td>Plugin screen is empty</td><td>The folder is not one of MPC's content locations, or the plugin has no skin for your MPC OS version (MPC OS 2.x versus 3.x).</td></tr>
+<tr><td>Not enough room, or drive refused</td><td>Free space on the drive, or use an ext4 drive: FAT, exFAT and NTFS cannot hold symbolic links.</td></tr>
+<tr><td>Catalog does not load</td><td>The phone has no internet. The catalog and plugin downloads need it; the MPC does not.</td></tr>
+<tr><td>Play Protect blocks the APK</td><td>Use the APK from the project release (it targets current Android). Choose <i>More details</i> then <i>Install anyway</i> if it still asks.</td></tr>
+</table>
+
+<h2>12. Good to know</h2>
+<ul>
+<li>Nothing about your MPC (address, password) is stored on the phone.</li>
+<li>Quitting the app while an install is running can leave it half done. The back button asks before quitting.</li>
+<li>Installing runs a script as root on the MPC and edits MPC's plugin settings; a backup is always made first.</li>
+<li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
+<li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
+</ul>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 0.5.10. The app was tested offline against a simulated device; test a first install on your own MPC with a saved project.</p>
+</body></html>

@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MPC Plugin Installer</title>
+<style>
+:root { --bg:#e9e7e2; --panel:#f7f6f3; --panel-2:#eeede8; --line:#cdcac2; --fg:#1b1c1f; --muted:#64666d; --accent:#d63a30; --accent-fg:#fff;
+  --ok:#2e7d32; --lcd:#1b1c1f; --lcd-fg:#f4f4f4; --tabs:#c9c6bd; --tab-fg:#4a4c52; --tab-hover:#d6d3cb; --tab-n:#b7b4aa;
+  --warn:#8a5a00; --warn-line:#c58b00; --warn-bg:#fbf1d6; --note:#4b3f94; --sel-link:#ffb3ad; --display:"Titillium Web","Arial Narrow",system-ui,sans-serif; --text:"Roboto",system-ui,sans-serif; color-scheme:light; }
+/* dark: the system's setting (prefers-color-scheme, or data-sys set by the Android app), unless the theme button chose one */
+@media (prefers-color-scheme: dark) { :root:not([data-theme=light]):not([data-sys=light]) { --bg:#121316; --panel:#1c1e22; --panel-2:#24262b; --line:#383b42; --fg:#ececea; --muted:#a4a7ae; --accent:#e9483d; --accent-fg:#fff;
+  --ok:#7cc77f; --lcd:#08090a; --lcd-fg:#f1f1f1; --tabs:#2a2c31; --tab-fg:#b8bac0; --tab-hover:#34373d; --tab-n:#41444b;
+  --warn:#e8b65a; --warn-line:#a47a2c; --warn-bg:#352a12; --note:#b9adff; --sel-link:#ff9d95; color-scheme:dark; } }
+:root[data-sys=dark]:not([data-theme=light]), :root[data-theme=dark] { --bg:#121316; --panel:#1c1e22; --panel-2:#24262b; --line:#383b42; --fg:#ececea; --muted:#a4a7ae; --accent:#e9483d; --accent-fg:#fff;
+  --ok:#7cc77f; --lcd:#08090a; --lcd-fg:#f1f1f1; --tabs:#2a2c31; --tab-fg:#b8bac0; --tab-hover:#34373d; --tab-n:#41444b;
+  --warn:#e8b65a; --warn-line:#a47a2c; --warn-bg:#352a12; --note:#b9adff; --sel-link:#ff9d95; color-scheme:dark; }
+:root[data-theme=light] { color-scheme:light; }
+#theme { position:absolute; top:16px; right:0; font:700 12px/1 var(--display); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); background:transparent; border:1px solid var(--line); border-radius:999px; padding:7px 12px; cursor:pointer; }
+header { position:relative; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:400 15px/1.55 var(--text); padding:0 16px 64px; }
+.wrap { max-width:860px; margin-inline:auto; }
+header { padding:28px 0 8px; }
+h1 { font:700 clamp(30px,6vw,46px)/1 var(--display); text-transform:uppercase; letter-spacing:.02em; margin:0 0 8px; }
+.lede { color:var(--muted); margin:0 0 20px; max-width:60ch; }
+section { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px 18px 16px; margin-bottom:16px; }
+section.off { opacity:.55; }
+h2 { font:700 18px/1.2 var(--display); text-transform:uppercase; letter-spacing:.08em; margin:0 0 4px; display:flex; gap:10px; align-items:center; }
+h2 .n { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--accent); color:var(--accent-fg); font-size:14px; }
+.sub { color:var(--muted); margin:0 0 12px; font-size:14px; }
+label.f { display:flex; flex-direction:column; gap:4px; font:600 11px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+input[type=text], input[type=password] { font:400 15px var(--text); letter-spacing:0; text-transform:none; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; width:100%; }
+.row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+.row > * { flex:1 1 200px; }
+.row > button { flex:0 0 auto; }
+button, .btn { font:600 14px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; border-radius:6px; border:1px solid var(--line); background:var(--panel-2); color:var(--fg); padding:12px 16px; cursor:pointer; }
+button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-fg); }
+button:disabled { opacity:.45; cursor:not-allowed; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.msg { margin:10px 0 0; font-size:14px; }
+.msg.err { color:var(--accent); } .msg.ok { color:var(--ok); }
+.small { font-size:13px; color:var(--muted); }
+ul.list { list-style:none; margin:0; padding:0; border-top:1px solid var(--line); }
+ul.list li { display:flex; gap:12px; align-items:flex-start; padding:10px 2px; border-bottom:1px solid var(--line); }
+ul.list input[type=checkbox] { width:20px; height:20px; margin-top:2px; accent-color:var(--accent); flex:none; }
+ul.list .t { flex:1; min-width:0; } ul.list .t b { font:700 16px var(--display); letter-spacing:.04em; text-transform:uppercase; }
+ul.list .t .d { display:block; color:var(--muted); font-size:13px; }
+.tag { display:inline-block; vertical-align:middle; font:600 11px var(--display); letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--line); border-radius:4px; padding:2px 6px; margin-left:8px; color:var(--muted); }
+.tag.ok { color:var(--ok); border-color:var(--ok); }
+.drop { border:2px dashed var(--line); border-radius:6px; padding:22px; text-align:center; color:var(--muted); margin-top:14px; cursor:pointer; background:var(--bg); }
+.drop.over { border-color:var(--accent); color:var(--fg); }
+.log { background:var(--lcd); color:var(--lcd-fg); border-radius:6px; padding:12px; font:500 12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; max-height:340px; overflow:auto; margin:12px 0 0; }
+dialog { border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--fg); max-width:520px; width:calc(100% - 32px); padding:20px; }
+dialog::backdrop { background:rgb(0 0 0/.45); }
+dialog h3 { font:700 20px var(--display); text-transform:uppercase; letter-spacing:.06em; margin:0 0 8px; }
+dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+.tools[hidden] { display:none; }
+.tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:0 0 10px; }
+.tools .wide { grid-column:1 / -1; }
+.tools select { font:400 14px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; width:100%; }
+.tools label.f { min-width:0; }
+.ktabs { display:flex; gap:4px; background:var(--tabs); border-radius:6px 6px 0 0; padding:6px 6px 0; margin:8px 0 0; overflow-x:auto; }
+.ktabs button { font:700 14px/1 var(--display); letter-spacing:.08em; text-transform:uppercase; color:var(--tab-fg); background:transparent; border:0; border-radius:5px 5px 0 0; padding:10px 14px; cursor:pointer; white-space:nowrap; }
+.ktabs button:hover { color:var(--fg); background:var(--tab-hover); }
+.ktabs button[aria-selected=true] { color:var(--fg); background:var(--panel); box-shadow:inset 0 3px 0 var(--accent); }
+.ktabs .n { font:500 12px var(--text, inherit); letter-spacing:0; background:var(--tab-n); color:var(--fg); border-radius:10px; padding:1px 7px; margin-left:4px; }
+.catbar { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; align-items:center; margin:2px 0 8px; font-size:13px; color:var(--muted); }
+.linkbtn { font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); background:none; border:0; padding:6px 0; cursor:pointer; }
+.tag.up { color:var(--warn); border-color:var(--warn-line); }
+ul.list .t .d.osn.err { color:var(--accent); } ul.list .t .d.osn.warn { color:var(--note); }
+#selbar { position:sticky; bottom:12px; z-index:4; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--lcd); color:var(--lcd-fg);
+  border-radius:8px; padding:10px 12px 10px 16px; box-shadow:0 6px 24px rgb(0 0 0/.25); margin-top:12px; }
+#selbar[hidden] { display:none; }
+#selbar b { font:700 15px var(--display); letter-spacing:.06em; text-transform:uppercase; }
+#selbar button.linkbtn { color:var(--sel-link); }
+details.collapse > summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+details.collapse > summary::-webkit-details-marker { display:none; }
+details.collapse > summary h2 { margin:0; }
+details.collapse > summary .hint { font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); }
+details.collapse[open] > summary .hint { font-size:0; }
+details.collapse[open] > summary .hint::after { content:"Hide"; font-size:12px; }
+details.collapse[open] > summary { margin-bottom:6px; }
+.row input[type=number] { width:100%; font:400 15px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
+ul.list li.grp { display:block; padding:12px 2px 6px; font:700 12px/1 var(--display); letter-spacing:.12em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); }
+fieldset.where { border:1px solid var(--line); border-radius:6px; margin:0 0 12px; padding:8px 12px 10px; }
+fieldset.where[hidden] { display:none; }
+fieldset.where legend { font:600 11px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:0 6px; }
+.whereopt { display:flex; gap:10px; align-items:flex-start; padding:6px 0; cursor:pointer; }
+.whereopt input { margin-top:3px; accent-color:var(--accent); }
+.whereopt span { display:block; } .whereopt small { display:block; color:var(--muted); font-size:13px; }
+.badge { font:700 12px/1 var(--display); letter-spacing:.08em; text-transform:uppercase; color:var(--warn); border:1px solid var(--warn-line); background:var(--warn-bg); border-radius:999px; padding:4px 10px; margin-left:auto; }
+.badge[hidden] { display:none; }
+details.collapse > summary .badge + .hint { margin-left:12px; }
+footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
+fieldset.where { min-width:0; overflow-wrap:anywhere; }
+label.opt, div.opt { display:block; margin-top:8px; }
+label.opt[hidden], div.opt[hidden] { display:none; }
+#drivelist li { flex-wrap:wrap; align-items:center; } #drivelist .t { flex:1 1 180px; min-width:0; } #drivelist button { flex:none; }
+details.intdisc { margin-top:10px; } details.intdisc summary { cursor:pointer; color:var(--muted); font-size:14px; }
+img.banner { display:block; width:100%; max-width:480px; aspect-ratio:2/1; object-fit:cover; border-radius:6px; margin-top:8px; background:var(--panel-2); border:1px solid var(--line); }
+.catbar label { margin-left:auto; display:flex; gap:6px; align-items:center; font-size:14px; color:var(--muted); }
+dialog { box-sizing:border-box; overflow-wrap:anywhere; }
+dialog .actions { flex-wrap:wrap; }
+.msg, .small, ul.list .d { overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <button type="button" id="theme" title="Colours: follow the system, light or dark">Theme: auto</button>
+  <h1>MPC plugin installer</h1>
+  <p class="lede">Install plugins from the catalog, or zips you already have, on your MPC or Force. This page runs on your computer only. Nothing about your device is saved.</p>
+</header>
+
+<section id="s1">
+  <h2><span class="n">1</span>Connect to your device</h2>
+  <p class="sub">Your device needs SSH access as <b>root</b> (a modded unit). Use the IP address shown on the device or in your router.</p>
+  <p class="sub">Plugins are community-provided and run as root on your device. Use them at your own risk, with no warranty: they can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. Not affiliated with or endorsed by Akai Professional.</p>
+  <form id="conn" class="row" autocomplete="off">
+    <label class="f">IP address<input id="host" type="text" inputmode="decimal" placeholder="e.g. 192.168.1.20" spellcheck="false" required></label>
+    <label class="f">Password (if it has one)<input id="pw" type="password" placeholder="only used for this connection"></label>
+    <button class="primary" id="connect" type="submit">Connect</button>
+  </form>
+  <p class="msg" id="connmsg" role="status" aria-live="polite"></p>
+</section>
+
+<section id="s2" class="off">
+  <h2><span class="n">2</span>Choose plugins</h2>
+  <p class="sub">Tick what you want from the catalog, and/or drop plugin zips you downloaded or built yourself.</p>
+  <div class="ktabs" id="ktabs" role="tablist" aria-label="Plugin kind" hidden></div>
+  <div class="tools" id="tools" hidden>
+    <label class="f wide">Search<input id="q" type="search" placeholder="Name, developer or what it does" autocomplete="off"></label>
+    <label class="f">Developer<select id="f-dev"></select></label>
+    <label class="f">Show<select id="f-show"></select></label>
+    <label class="f">Sort by<select id="f-sort"></select></label>
+  </div>
+  <div class="catbar"><span id="catcount" aria-live="polite"></span><button class="linkbtn" type="button" id="resetf" hidden>Clear filters</button><label><input type="checkbox" id="banners"> Banners</label></div>
+  <ul class="list" id="cat"><li class="small">Loading the catalog…</li></ul>
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add plugin zip files">Drop plugin zip files here, or click to choose them
+    <input id="file" type="file" accept=".zip" multiple hidden></div>
+  <ul class="list" id="ups"></ul>
+  <p class="msg" id="upmsg" role="status" aria-live="polite"></p>
+</section>
+
+<section id="s3" class="off">
+  <h2><span class="n">3</span>Install</h2>
+  <p class="sub" id="summary">Nothing selected yet.</p>
+  <fieldset class="where" id="where" hidden><legend>Install to</legend><div id="whereopts"></div><p class="msg" id="nodrive" hidden></p><div id="drives" hidden><p class="small">These drives have no <code>Synths</code> folder yet. Create one to install there:</p><ul class="list" id="drivelist"></ul></div><p class="msg" id="drivemsg" role="status" aria-live="polite"></p><p class="msg" id="wherewarn"></p>
+    <details id="internal" class="intdisc" hidden><summary>Use the MPC's internal drive instead (not recommended)</summary>
+      <p class="small">The internal drive is the MPC's built-in flash storage (eMMC). Installing and updating plugins, and the files plugins write, all add wear to it, and if it fails the MPC itself needs repair. An SD card, USB drive or SSD is cheap to replace: use one of those whenever you can.</p>
+      <label class="small opt"><input type="checkbox" id="intack"> I understand: let me install to the internal drive</label><div id="intopt"></div>
+    </details></fieldset>
+  <label class="small opt" id="regboxl"><input type="checkbox" id="regon" checked> After installing, register every plugin folder on the device with MPC (built in, nothing needed on the device: it adds missing entries, drops broken ones, and backs up MPC's settings first)</label>
+  <button class="primary" id="go" disabled>Install…</button>
+  <p class="msg" id="result" role="status" aria-live="polite"></p>
+  <pre class="log" id="log" hidden></pre>
+</section>
+
+<section id="s4" class="off">
+<details id="d4" class="collapse">
+  <summary><h2><span class="n">4</span>Remove plugins</h2><span class="hint">Show</span></summary>
+  <p class="sub">The plugins on your device. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.</p>
+  <ul class="list" id="dev"><li class="small">Connect to see what is on the device.</li></ul>
+  <button id="rm" disabled>Remove…</button>
+  <p class="msg" id="rmresult" role="status" aria-live="polite"></p>
+  <pre class="log" id="rmlog" hidden></pre>
+</details>
+</section>
+
+<section id="s5" class="off">
+<details id="d5" class="collapse">
+  <summary><h2>Something missing from the plugin list?</h2><span class="badge" id="regbadge" hidden></span><span class="hint">Show</span></summary>
+  <p class="sub">Installing already registers its plugins. Use this only if one is missing: a plugin folder only shows up in MPC once it is in MPC's plugin list. Folders you copied in yourself, or that MPC forgot (for example because a card was out when MPC started), are not. This adds them, and drops entries whose plugin file is gone. Everything else in the list is left alone. MPC's settings are backed up first and MPC restarts once.</p>
+  <ul class="list" id="reglist"><li class="small">Connect to check.</li></ul>
+  <button id="reg" disabled>Register…</button>
+  <p class="msg" id="regres" role="status" aria-live="polite"></p>
+  <pre class="log" id="reglog" hidden></pre>
+</details>
+</section>
+
+<section id="s6" class="off">
+<details id="d6" class="collapse">
+  <summary><h2><span class="n">5</span>Clean up old backups</h2><span class="hint">Show</span></summary>
+  <p class="sub">Every install, removal and sync leaves a copy of MPC's settings file on the device. They are small, but they pile up. This keeps the newest ones and deletes the older ones. The newest backup is never deleted, and MPC is not restarted.</p>
+  <p class="small" id="bkinfo">Connect to see them.</p>
+  <div class="row"><label class="f">Keep the newest<input id="keepn" type="number" min="1" max="1000" value="10" inputmode="numeric"></label><button id="prune" disabled>Delete older backups…</button></div>
+  <p class="msg" id="pruneres" role="status" aria-live="polite"></p>
+</details>
+</section>
+
+<div id="selbar" hidden role="region" aria-label="Selected plugins"><span><b id="selcount"></b> <button class="linkbtn" type="button" id="selclear">Clear</button></span><button class="primary" id="go2" type="button">Install…</button></div>
+
+<footer>Community-provided software. Installing runs a script as root on your device and edits MPC's settings (a backup is made first). Downloads are checked against the catalog's checksums before anything is copied.</footer>
+</div>
+
+<dialog id="dlg">
+  <h3 id="dlgtitle">Install on your device?</h3>
+  <p id="dlgtxt"></p>
+  <p id="dlgsave"><b>Save your project first.</b> MPC will be stopped and started again, and anything unsaved is lost.</p>
+  <div class="actions"><button id="no">Cancel</button><button class="primary" id="yes">Install</button></div>
+</dialog>
+
+<script>
+"use strict";
+var T = new URLSearchParams(location.search).get("t") || "";
+try { history.replaceState(null, "", location.pathname); } catch (e) {}
+var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
+function $(id) { return document.getElementById(id); }
+function text(el, s) { el.textContent = s; }
+function api(path, body, raw) {
+  var o = { headers: { "X-MPC-Token": T } };
+  if (body !== undefined) { o.method = "POST"; if (raw) o.body = body; else { o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); } }
+  return fetch(path, o).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+}
+function msg(el, s, cls) { text(el, s || ""); el.className = "msg" + (cls ? " " + cls : ""); }
+function gb(kb) { return kb >= 1048576 ? (kb / 1048576).toFixed(1) + " GB" : Math.round(kb / 1024) + " MB"; }
+function mb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+function el(tag, cls, t) { var e = document.createElement(tag); if (cls) e.className = cls; if (t != null) e.textContent = t; return e; }
+
+function setConnected(c, info, problems) {
+  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
+  $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c);
+  if (c) {
+    var n = (info.installed || []).length;
+    S.roots = info.roots || []; S.drives = info.drives || []; S.root = defaultRoot();
+    var places = S.roots.map(function (r) { return r.label + " (" + (r.fs ? r.fs + ", " : "") + gb(r.freeKB) + " free)"; }).join("; ");
+    var m = "Connected to " + info.host + " (" + (info.arch || "?") + "). " + n + " plugin folder" + (n === 1 ? "" : "s") + " found. Plugin locations: " + (places || info.synths) + ". Device key " + info.fingerprint + ".";
+    if (S.problems.length) msg($("connmsg"), m + " Cannot install here: " + S.problems.join("; ") + ".", "err"); else msg($("connmsg"), m, "ok");
+    drawWhere(); loadCatalog(); loadDevice(); loadUnreg(); loadBackups();
+  }
+  refresh();
+}
+function loadCatalog() {
+  api("/api/catalog").then(function (j) { S.cat = j.plugins; buildTools(); drawCat(); }).catch(function (e) {
+    S.cat = []; var ul = $("cat"); ul.textContent = ""; var li = el("li", "small", e.message); ul.appendChild(li);
+  });
+}
+var SHOWS = { "": "All plugins", "new": "Not on the device yet", "on": "Already on the device", "upd": "Updates available", "sel": "Only the ones I ticked" };
+var SORTS = { name: "Name", dev: "Developer", kind: "Kind", size: "Smallest download" };
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins", all: "All" };
+function kindWord(k) { return k === "midi" ? "MIDI plugins" : k === "all" ? "plugins" : (KINDS[k] || "plugins").toLowerCase(); }
+function tabOf(p) { return p.role === "midi" && p.kind === "instrument" ? "midi" : p.kind; }   // MIDI generators and sequencers have their own tab
+function fill(id, opts, val) {
+  var sel = $(id); sel.textContent = "";
+  opts.forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
+  sel.value = val;
+}
+function buildTools() {
+  var devs = {};
+  S.cat.forEach(function (p) { devs[p.author] = 1; });
+  if (S.cat.length && !S.cat.some(function (p) { return tabOf(p) === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
+    var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return tabOf(p) === k; }); })[0]; if (first) S.f.kind = first;
+  }
+  fill("f-dev", [["", "All developers"]].concat(Object.keys(devs).sort().map(function (d) { return [d, d]; })), S.f.dev);
+  fill("f-show", Object.keys(SHOWS).map(function (k) { return [k, SHOWS[k]]; }), S.f.show);
+  fill("f-sort", Object.keys(SORTS).map(function (k) { return [k, SORTS[k]]; }), S.f.sort);
+  $("tools").hidden = S.cat.length === 0;
+  drawKindTabs();
+}
+/* Instruments, Effects, Addins, as on the catalog page. Counts follow the other filters, so a search shows which tab holds the matches.
+   Ticks are kept across tabs (the bar at the bottom counts them all). */
+var KIND_TABS = ["instrument", "midi", "effect", "addin", "all"];
+function kindCounts() { var c = {}; shownCat(true).forEach(function (p) { c[tabOf(p)] = (c[tabOf(p)] || 0) + 1; c.all = (c.all || 0) + 1; }); return c; }
+function drawKindTabs() {
+  var box = $("ktabs"); box.hidden = S.cat.length === 0; box.textContent = "";
+  var c = kindCounts();
+  KIND_TABS.forEach(function (k) {
+    var b = el("button", null, KINDS[k]); b.type = "button"; b.setAttribute("role", "tab"); b.id = "kt-" + k; b.setAttribute("aria-selected", S.f.kind === k ? "true" : "false");
+    b.tabIndex = S.f.kind === k ? 0 : -1; b.appendChild(el("span", "n", String(c[k] || 0)));
+    b.addEventListener("click", function () { S.f.kind = k; drawKindTabs(); drawCat(); });
+    b.addEventListener("keydown", function (e) {
+      var i = KIND_TABS.indexOf(S.f.kind), d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
+      e.preventDefault(); S.f.kind = KIND_TABS[(i + d + KIND_TABS.length) % KIND_TABS.length]; drawKindTabs(); drawCat(); $("kt-" + S.f.kind).focus();
+    });
+    box.appendChild(b);
+  });
+}
+function shownCat(anyKind) {
+  var f = S.f, q = f.q.trim().toLowerCase();
+  var out = S.cat.filter(function (p) {
+    if (q && [p.name, p.author, p.summary, p.id].join(" ").toLowerCase().indexOf(q) < 0) return false;
+    if (!anyKind && f.kind !== "all" && tabOf(p) !== f.kind) return false;
+    if (f.dev && p.author !== f.dev) return false;
+    if (f.show === "new" && p.installed) return false;
+    if (f.show === "on" && !p.installed) return false;
+    if (f.show === "upd" && !p.update) return false;
+    if (f.show === "sel" && !S.pickCat[p.id]) return false;
+    return true;
+  });
+  var cmp = { name: function (a, b) { return a.name.localeCompare(b.name); },
+              dev: function (a, b) { return a.author.localeCompare(b.author) || a.name.localeCompare(b.name); },
+              kind: function (a, b) { return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name); },
+              size: function (a, b) { return a.size - b.size || a.name.localeCompare(b.name); } }[f.sort] || function () { return 0; };
+  return out.sort(cmp);
+}
+/* Which MPC OS generations a plugin works on and what that means for this device. The catalog says (os_compat, max_glibc); the device's glibc
+   (S.libc, read when connecting) tells MPC OS 2.x (about glibc 2.32) from 3.x and the Force (2.39). Never blocks: it warns. */
+function vgt(a, b) {   /* is version a newer than version b ("2.34" > "2.33") */
+  var x = String(a).split(".").map(Number), y = String(b).split(".").map(Number);
+  for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; }
+  return false;
+}
+/* MPC OS 3.x is the current, standard OS, so it gets no badge: only a 2.x-capable version with a 2.x device test does (as on the catalog site).
+   A 3.x-only plugin on a device that looks like 2.x still gets osNote's warning. */
+function osTagFor(p) {
+  var g = p.os_compat || []; if (g.indexOf("2.x") < 0 || !p.tested_2x) return null;
+  var t = el("span", "tag", "MPC OS 2.x tested"); t.title = "Tested on an MPC OS 2.x unit; its skin and library were also checked against MPC OS 2.15.1's own skins and glibc. Works on MPC OS 3.x too."; return t;
+}
+function osNote(p) {   /* {level, text} when this plugin will not work as expected on the connected device, else null */
+  if (S.arch === "aarch64" && !p.gen2) return { level: "err", text: p.name + " has no Gen2 (aarch64) build yet, so it cannot be installed on this device." };
+  if (!S.libc) return null;
+  if (p.max_glibc && vgt(p.max_glibc, S.libc)) return { level: "err", text: p.name + " needs glibc " + p.max_glibc + " but this device has " + S.libc + ": MPC will list it but it will not load." };
+  var g = p.os_compat || [];
+  if (g.length && g.indexOf("2.x") < 0 && vgt("2.34", S.libc)) return { level: "warn", text: p.name + " is made for MPC OS 3.x. This device looks like MPC OS 2.x (glibc " + S.libc + "), so its touchscreen page may stay empty; it still works from the Q-Links." };
+  return null;
+}
+function drawCat() {
+  var ul = $("cat"); ul.textContent = "";
+  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
+  var inTab = S.cat.filter(function (p) { return f.kind === "all" || tabOf(p) === f.kind; }).length;
+  rows.forEach(function (p) {
+    var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c_" + p.id; cb.checked = !!S.pickCat[p.id];
+    cb.addEventListener("change", function () { S.pickCat[p.id] = cb.checked; refresh(); if (S.f.show === "sel") drawCat(); });
+    var t = el("div", "t"), b = el("b", null, p.name);
+    if (p.installed) b.appendChild(el("span", "tag ok", "on the device" + (p.installedAt ? " (" + p.installedAt + ")" : "")));
+    if (p.update) b.appendChild(el("span", "tag up", "update: v" + p.installedVersion + " → v" + p.version));
+    if (p.defer === false) { var dt = el("span", "tag", "restarts MPC itself"); dt.title = "This release has an older installer that restarts MPC on its own, so it adds a restart to the batch."; b.appendChild(dt); }
+    var ot = p.kind === "addin" ? null : osTagFor(p); if (ot) b.appendChild(ot);
+    if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
+    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
+    var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
+    if (S.banners && p.screenshot) {
+      var im = document.createElement("img"); im.className = "banner"; im.loading = "lazy"; im.alt = ""; im.referrerPolicy = "no-referrer"; im.src = p.screenshot;
+      im.addEventListener("error", function () { im.remove(); }); t.appendChild(im);
+    }
+    var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
+    li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
+  });
+  if (!S.cat.length) ul.appendChild(el("li", "small", "The catalog has no downloadable plugins right now."));
+  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + kindWord(f.kind) + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + kindWord(f.kind) + " right now."));
+  var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
+  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked from the catalog" : "") : "");
+  $("resetf").hidden = !filtered;
+}
+// A card, USB drive or SSD under /media, never the internal drive: that one is only chosen by hand, after its warning
+function defaultRoot() {
+  var ext = S.roots.filter(function (r) { return !r.primary; });
+  var r = ext.filter(function (x) { return !x.noExec; })[0] || ext[0];
+  return r ? r.path : "";
+}
+function rootNote(r) {
+  var n = [];
+  if (r.noExec) n.push("This drive is mounted noexec right now. If its plugins only show Load Plugin in MPC, restart the MPC with the drive in, then register the plugin folders (the box "Something missing from the plugin list?").");
+  if (r.noSymlinks) n.push("Formatted " + r.fs + ", which cannot store symbolic links: a plugin that needs them (Crate Digger) cannot be installed here.");
+  if (!r.inContent) n.push("MPC does not list this folder as a content location, so a plugin's screen may not show until you add it in MPC's settings.");
+  if (!r.primary) n.push("If this drive is not in when MPC starts, its plugins drop out of MPC's plugin list until you register them again (the box "Something missing from the plugin list?").");
+  return n;
+}
+function rootOption(r, box, disabled) {
+  var lab = el("label", "whereopt"), rb = document.createElement("input"); rb.type = "radio"; rb.name = "where"; rb.value = r.path; rb.checked = r.path === S.root; rb.disabled = !!disabled;
+  rb.addEventListener("change", function () { S.root = r.path; drawWherewarn(); refresh(); });
+  var sp = el("span"); sp.appendChild(el("b", null, r.label)); sp.appendChild(el("small", null, r.path + " · " + (r.fs ? r.fs + " · " : "") + gb(r.freeKB) + " free"));
+  lab.appendChild(rb); lab.appendChild(sp); box.appendChild(lab);
+}
+function drawWhere() {
+  var box = $("whereopts"); box.textContent = ""; $("where").hidden = !S.connected;
+  var ext = S.roots.filter(function (r) { return !r.primary; }), inr = S.roots.filter(function (r) { return r.primary; })[0];
+  ext.forEach(function (r) { rootOption(r, box); });
+  var nd = $("nodrive"); nd.hidden = ext.length > 0;
+  msg(nd, S.drives.length ? "Create a Synths folder on your drive below, then install there." : "No SD card, USB drive or SSD found under /media. Plug one into the MPC, then connect again.", "err");
+  var io = $("intopt"); io.textContent = ""; $("internal").hidden = !inr;
+  if (inr) { rootOption(inr, io, !$("intack").checked); if (S.root === inr.path) $("internal").open = true; }
+  drawWherewarn(); drawDrives();
+}
+function drawDrives() {
+  var ul = $("drivelist"); ul.textContent = ""; $("drives").hidden = !S.drives.length;
+  S.drives.forEach(function (d) {
+    var li = el("li"), t = el("div", "t");
+    t.appendChild(el("b", null, d.label));
+    t.appendChild(el("span", "d", d.path + " · " + (d.fs ? d.fs + " · " : "") + gb(d.freeKB) + " free" + (d.noExec ? " · mounted noexec right now" : "")));
+    var b = el("button", null, "Create Synths folder"); b.type = "button";
+    b.addEventListener("click", function () { makeRoot(d, b); });
+    li.appendChild(t); li.appendChild(b); ul.appendChild(li);
+  });
+}
+function makeRoot(d, b) {
+  b.disabled = true; msg($("drivemsg"), "Creating " + d.path + "/Synths…");
+  api("/api/mkroot", { drive: d.path }).then(function (j) {
+    var info = j.device, made = d.path + "/Synths";
+    S.roots = info.roots || []; S.drives = info.drives || [];
+    var r = S.roots.filter(function (x) { return x.path === made; })[0];
+    if (r) S.root = r.path;
+    drawWhere(); loadDevice(); loadUnreg();
+    msg($("drivemsg"), "Created " + made + "." + "", "ok"); refresh();
+  }).catch(function (e) { b.disabled = false; msg($("drivemsg"), e.message, "err"); });
+}
+function drawWherewarn() {
+  var r = S.roots.filter(function (x) { return x.path === S.root; })[0], n = r ? rootNote(r) : [];
+  msg($("wherewarn"), n.join(" "), "");
+
+}
+function rootLabelOf(path) { var r = S.roots.filter(function (x) { return x.path === path; })[0]; return r ? r.label : path; }
+function loadUnreg() {
+  return api("/api/unregistered").then(function (j) { S.unreg = j; drawUnreg(); refresh(); }).catch(function (e) { S.unreg = null; $("reglist").textContent = ""; $("reglist").appendChild(el("li", "small", e.message)); refresh(); });
+}
+function drawUnreg() {
+  var ul = $("reglist"); ul.textContent = ""; var u = S.unreg, n = u ? u.add.length + u.remove.length : 0;
+  if (!u) { ul.appendChild(el("li", "small", "Connect to check.")); }
+  else if (!n) { ul.appendChild(el("li", "small", "Everything in your plugin folders is registered with MPC.")); }
+  else {
+    u.add.forEach(function (it) { var li = el("li"), t = el("div", "t"); t.appendChild(el("b", null, it.folder)); t.appendChild(el("span", "d", "in " + (it.rootLabel || it.root) + " · will be added to MPC's plugin list")); li.appendChild(t); ul.appendChild(li); });
+    u.remove.forEach(function (f) { var li = el("li"), t = el("div", "t"); t.appendChild(el("b", null, f.split("/").slice(-2).join("/"))); t.appendChild(el("span", "d", "its plugin file is gone: the entry will be dropped from the list")); li.appendChild(t); ul.appendChild(li); });
+  }
+  $("regbadge").hidden = !n; text($("regbadge"), n + " waiting");
+}
+function loadDevice() {
+  return api("/api/device").then(function (j) { S.dev = j.plugins; if (j.roots) { S.roots = j.roots; } drawDev(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); msg($("rmresult"), e.message, "err"); });
+}
+function devKey(p) { return p.root + "\u0000" + p.folder; }
+function drawDev() {
+  var ul = $("dev"); ul.textContent = ""; var last = null, grouped = S.roots.length > 1 || S.dev.some(function (p) { return p.addin; });
+  S.dev.forEach(function (p, i) {
+    if (grouped && p.root !== last) { last = p.root; ul.appendChild(el("li", "grp", (p.rootLabel || rootLabelOf(p.root)) + " · " + p.root)); }
+    var key = devKey(p), li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "d_" + i; cb.disabled = !p.known; cb.checked = !!S.pickDev[key] && p.known;
+    cb.addEventListener("change", function () { S.pickDev[key] = cb.checked; refresh(); });
+    var t = el("div", "t"), b = el("b", null, p.name || p.folder);
+    if (p.version) b.appendChild(el("span", "tag", "v" + p.version));
+    t.appendChild(b);
+    if (p.addin) t.appendChild(el("span", "d", p.known ? "addin · removed by its own uninstaller, its settings with it"
+      : "addin · no uninstall.sh in its folder (not installed by the addin installer): remove it by hand"));
+    else t.appendChild(el("span", "d", p.known ? p.folder + (p.keep.length ? " · your files kept: " + p.keep.join(", ") : " · nothing in it is kept") + " · " + (p.source === "catalog" ? "from the catalog" : "from a zip you added")
+      : p.folder + " · not from the catalog, so the app can't tell which files in it are yours. Drop its release zip above to manage it here, or remove it by hand."));
+    var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
+    li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
+  });
+  if (!S.dev.length) ul.appendChild(el("li", "small", "No plugin folders found on the device."));
+}
+function loadBackups() {
+  return api("/api/backups").then(function (j) { S.bk = j.backups; drawBk(); refresh(); }).catch(function (e) { S.bk = null; text($("bkinfo"), e.message); refresh(); });
+}
+function keepN() { var n = parseInt($("keepn").value, 10); return isNaN(n) || n < 1 || n > 1000 ? 0 : n; }
+function drawBk() {
+  var b = S.bk;
+  text($("bkinfo"), !b ? "Connect to see them." : b.count === 0 ? "No backups of MPC's settings on the device."
+    : b.count + " backup" + (b.count === 1 ? "" : "s") + " of MPC's settings (about " + (b.totalKB >= 1024 ? (b.totalKB / 1024).toFixed(1) + " MB" : b.totalKB + " KB") + ")" +
+      (b.oldest && b.newest ? ", from " + b.oldest + " to " + b.newest : "") + ".");
+}
+function drawUps() {
+  var ul = $("ups"); ul.textContent = "";
+  S.ups.forEach(function (p) {
+    var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "u_" + p.handle; cb.checked = S.pickUp[p.handle] !== false;
+    S.pickUp[p.handle] = cb.checked;
+    cb.addEventListener("change", function () { S.pickUp[p.handle] = cb.checked; refresh(); });
+    var t = el("div", "t"), b = el("b", null, p.title); b.appendChild(el("span", "tag", "your zip"));
+    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " · " + mb(p.size) + (p.defer ? "" : " · older installer: MPC restarts for this one on its own")));
+    var rm = el("button", null, "Remove"); rm.type = "button";
+    rm.addEventListener("click", function () { api("/api/discard", { handle: p.handle }).then(function () { S.ups = S.ups.filter(function (x) { return x.handle !== p.handle; }); drawUps(); refresh(); if (S.connected) loadDevice(); }); });
+    var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
+    li.appendChild(cb); li.appendChild(lab); li.appendChild(rm); ul.appendChild(li);
+  });
+}
+function selection() {
+  return { catalog: S.cat.filter(function (p) { return S.pickCat[p.id]; }).map(function (p) { return p.id; }),
+           uploads: S.ups.filter(function (p) { return S.pickUp[p.handle]; }).map(function (p) { return p.handle; }), root: S.root,
+           register: $("regon").checked };
+}
+function refresh() {
+  var s = selection(), n = s.catalog.length + s.uploads.length;
+  text($("summary"), !S.connected ? "Connect to your device first." : n === 0 ? "Nothing selected yet." : n + " plugin" + (n === 1 ? "" : "s") + " selected." + (S.root ? "" : " Choose where to install them below."));
+  $("go").disabled = !S.connected || n === 0 || S.running || S.problems.length > 0 || !S.root;
+  $("go2").disabled = $("go").disabled;
+  Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
+  var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
+  $("rm").disabled = !S.connected || S.running || S.problems.length > 0 || !S.dev.some(function (p) { return S.pickDev[devKey(p)] && p.known; });
+  $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
+  $("selbar").hidden = !(S.connected && n > 0 && !S.running && S.problems.length === 0);
+  text($("selcount"), n + " plugin" + (n === 1 ? "" : "s") + " selected");
+}
+
+$("intack").addEventListener("change", function () {
+  var inr = S.roots.filter(function (r) { return r.primary; })[0];
+  if (!$("intack").checked && inr && S.root === inr.path) S.root = defaultRoot();
+  drawWhere(); refresh();
+});
+$("conn").addEventListener("submit", function (e) {
+  e.preventDefault(); msg($("connmsg"), "Connecting…"); $("connect").disabled = true;
+  api("/api/connect", { host: $("host").value, password: $("pw").value }).then(function (j) { $("pw").value = ""; setConnected(true, j.device, j.problems); })
+    .catch(function (err) { setConnected(false); msg($("connmsg"), err.message, "err"); }).then(function () { $("connect").disabled = false; });
+});
+
+function upload(files) {
+  if (!files.length) return;
+  var fd = new FormData(); for (var i = 0; i < files.length; i++) fd.append("file", files[i], files[i].name);
+  msg($("upmsg"), "Checking " + files.length + " file" + (files.length === 1 ? "" : "s") + "…");
+  api("/api/upload", fd, true).then(function (j) {
+    var bad = [];
+    j.results.forEach(function (r) { if (r.package) S.ups.push(r.package); else bad.push(r.name + ": " + r.error); });
+    drawUps(); refresh(); msg($("upmsg"), bad.join("\n"), bad.length ? "err" : ""); if (S.connected) loadDevice();
+  }).catch(function (e) { msg($("upmsg"), e.message, "err"); });
+}
+var drop = $("drop");
+drop.addEventListener("click", function () { $("file").click(); });
+drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+$("file").addEventListener("change", function () { upload($("file").files); $("file").value = ""; });
+["dragenter", "dragover"].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+["dragleave", "drop"].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+drop.addEventListener("drop", function (e) { upload(e.dataTransfer.files); });
+
+function startInstall() {
+  var s = selection();
+  api("/api/plan", s).then(function (p) {
+    var names = p.items.map(function (i) { return i.title + " " + i.version; }).join(", ");
+    var r = p.maybeMore ? " MPC will restart at least once, and once more for each plugin with an older installer that restarts MPC by itself (the log shows which)."
+          : p.restarts > 1 ? " MPC will restart " + p.restarts + " times, because some of the installers restart it themselves." : " MPC will restart once.";
+    S.mode = "install"; $("dlgsave").hidden = false; text($("dlgtitle"), "Install on your device?"); text($("yes"), "Install");
+    var notes = s.catalog.map(function (id) { return osNote(S.cat.filter(function (x) { return x.id === id; })[0]); }).filter(Boolean);
+    if (notes.some(function (n) { return n.level === "err"; })) text($("yes"), "Install anyway");
+    if (s.register) r += " Every plugin folder on the device is then registered with MPC (its settings are backed up first).";
+    text($("dlgtxt"), "About to install: " + names + (S.roots.length > 1 ? " to " + rootLabelOf(S.root) : "") + "." + r + (notes.length ? " " + notes.map(function (n) { return (n.level === "err" ? "Warning: " : "Note: ") + n.text; }).join(" ") : ""));
+    $("dlg").showModal();
+  }).catch(function (e) { msg($("result"), e.message, "err"); });
+}
+$("go").addEventListener("click", startInstall);
+$("go2").addEventListener("click", startInstall);
+$("selclear").addEventListener("click", function () {
+  S.pickCat = {}; S.ups.forEach(function (p) { S.pickUp[p.handle] = false; }); drawCat(); drawUps(); refresh();
+});
+[["q", "q", "input"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
+  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawKindTabs(); drawCat(); });
+});
+$("resetf").addEventListener("click", function () {
+  S.f = { q: "", kind: S.f.kind, dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
+});
+$("no").addEventListener("click", function () { $("dlg").close(); });
+function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
+$("rm").addEventListener("click", function () {
+  var ch = chosenDev(); S.mode = "remove"; $("dlgsave").hidden = false;
+  text($("dlgtitle"), "Remove from your device?"); text($("yes"), "Remove");
+  var plugs = ch.filter(function (p) { return !p.addin; }), adds = ch.filter(function (p) { return p.addin; });
+  text($("dlgtxt"), "About to remove: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + "." +
+    (plugs.length ? " Each plugin's folder and its entry in MPC's plugin list are deleted (a backup of MPC's settings is made first)." : "") +
+    (adds.length ? " Each addin is taken out of MPC's start-up list and its folder deleted, settings included." : "") +
+    (!plugs.length ? "" : ch.some(function (p) { return p.keep.length; }) ? " Your own files are kept: " + ch.filter(function (p) { return p.keep.length; }).map(function (p) { return (p.name || p.folder) + " (" + p.keep.join(", ") + ")"; }).join("; ") + "." : " Nothing inside is kept.") + " MPC restarts once.");
+  $("dlg").showModal();
+});
+$("prune").addEventListener("click", function () {
+  var kn = keepN(), del = S.bk ? S.bk.count - kn : 0; S.mode = "prune"; $("dlgsave").hidden = true;
+  text($("dlgtitle"), "Delete old settings backups?"); text($("yes"), "Delete");
+  text($("dlgtxt"), "Keeps the newest " + kn + " backup" + (kn === 1 ? "" : "s") + " of MPC's settings and deletes the " + del + " older one" + (del === 1 ? "" : "s") + ". MPC is not restarted and nothing else is touched.");
+  $("dlg").showModal();
+});
+$("keepn").addEventListener("input", refresh);
+$("reg").addEventListener("click", function () {
+  var u = S.unreg; S.mode = "register"; $("dlgsave").hidden = false;
+  text($("dlgtitle"), "Register plugin folders?"); text($("yes"), "Register");
+  text($("dlgtxt"), "Adds " + u.add.length + " plugin folder" + (u.add.length === 1 ? "" : "s") + " to MPC's plugin list (" + u.add.map(function (i) { return i.folder; }).join(", ") + ")" +
+    (u.remove.length ? " and drops " + u.remove.length + " entr" + (u.remove.length === 1 ? "y" : "ies") + " whose plugin file is gone" : "") + ". Everything else in the list stays. MPC's settings are backed up first and MPC restarts once.");
+  $("dlg").showModal();
+});
+$("yes").addEventListener("click", function () {
+  $("dlg").close();
+  if (S.mode === "prune") {
+    msg($("pruneres"), "Working…"); $("prune").disabled = true;
+    api("/api/prune", { keep: keepN(), confirm: true }).then(function (j) { msg($("pruneres"), "Deleted " + j.deleted + " old backup" + (j.deleted === 1 ? "" : "s") + ".", "ok"); S.bk = j.backups; drawBk(); refresh(); })
+      .catch(function (e) { msg($("pruneres"), e.message, "err"); refresh(); });
+    return;
+  }
+  if (S.mode === "register") {
+    S.running = true; refresh(); msg($("regres"), "Working…"); var gl = $("reglog"); gl.hidden = false; gl.textContent = "";
+    api("/api/register", { confirm: true }).then(function () { poll(0, $("reglog"), $("regres"), "Done. MPC is starting again: the folders are registered."); })
+      .catch(function (e) { S.running = false; refresh(); msg($("regres"), e.message, "err"); });
+    return;
+  }
+  if (S.mode === "remove") {
+    var items = chosenDev().map(function (p) { return { root: p.root, folder: p.folder }; });
+    S.running = true; refresh(); msg($("rmresult"), "Working…"); var rl = $("rmlog"); rl.hidden = false; rl.textContent = "";
+    api("/api/remove", { items: items, confirm: true }).then(function () { poll(0, $("rmlog"), $("rmresult"), "Done. MPC is starting again: the plugins are gone from its list."); })
+      .catch(function (e) { S.running = false; refresh(); msg($("rmresult"), e.message, "err"); });
+    return;
+  }
+  var s = selection(); s.confirm = true;
+  S.running = true; refresh(); msg($("result"), "Working…"); var log = $("log"); log.hidden = false; log.textContent = "";
+  scrollToProgress();
+  api("/api/install", s).then(function () { poll(0, $("log"), $("result"), "Done. MPC is starting again: the new plugins are in the plugin list."); }).catch(function (e) { S.running = false; refresh(); msg($("result"), e.message, "err"); });
+});
+function scrollToProgress() {
+  var t = $("result"); if (!t) return;
+  setTimeout(function () { try { t.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { t.scrollIntoView(); } }, 50);
+}
+function poll(since, log, resultEl, doneText) {
+  api("/api/job?since=" + since).then(function (j) {
+    if (j.lines && j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
+    if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
+    S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
+    api("/api/state").then(function (st) { if (st.device) { S.problems = st.problems || []; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); } });
+    refresh();
+  }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });
+}
+
+// Banners in the catalog list: on by default, can be turned off (they are pictures from the web, worth saving on mobile data)
+(function () {
+  try { S.banners = localStorage.getItem("mpc-banners") !== "off"; } catch (e) {}
+  $("banners").checked = S.banners;
+  $("banners").addEventListener("change", function () {
+    S.banners = $("banners").checked; try { localStorage.setItem("mpc-banners", S.banners ? "on" : "off"); } catch (e) {}
+    if (S.cat.length) drawCat();
+  });
+})();
+// Theme button: auto (the system's) -> dark -> light, remembered in this browser when it can be
+(function () {
+  var b = $("theme"), order = ["auto", "dark", "light"], cur = "auto";
+  try { cur = localStorage.getItem("mpc-theme") || "auto"; } catch (e) {}
+  function apply() {
+    if (cur === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = cur;
+    text(b, "Theme: " + cur);
+  }
+  b.addEventListener("click", function () { cur = order[(order.indexOf(cur) + 1) % order.length]; try { localStorage.setItem("mpc-theme", cur); } catch (e) {} apply(); });
+  apply();
+})();
+api("/api/state").then(function (st) {
+  S.ups = st.uploads || []; drawUps();
+  if (st.connected) setConnected(true, st.device, st.problems); else refresh();
+}).catch(function () { msg($("connmsg"), "This page needs the link the app printed (it contains the access token).", "err"); });
+</script>
+</body>
+</html>
