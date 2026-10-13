@@ -5,7 +5,7 @@ browser, and from there you connect to your device, tick plugins from the catalo
 built yourself, like Monomodule and Machinedrum), and press Install. It is one file (about 8 MB) with nothing to set up, for Windows,
 macOS and Linux.
 
-It uses the same release zips and the same `install.sh` as every other route (`docs/RELEASING.md`), so there is still one install
+It uses the same release zips and the same `install.sh` as every other route (`https://github.com/sd88me/mpc-vst-plugins/blob/desktop-v0.5.4/docs/RELEASING.md`), so there is still one install
 path. What it adds: a friendly page, one copy of each zip over SSH (as a tar stream, so executable bits and symlinks survive), and
 one MPC stop and start around the whole batch when the installers allow it.
 
@@ -52,9 +52,9 @@ one MPC stop and start around the whole batch when the installers allow it.
    `MPC.settings.bak-<what>-<date>` that nothing deletes. The page counts them and deletes all but the newest N (default 10, at least 1:
    the newest is never deleted, and only files named like that are touched). MPC is not stopped. `mpc-store.sh prune [--keep N]` does the
    same on the device.
-The page no longer has a patches step (removed 2026-10-13: the 16-pad layout and button remap change Akai's own program and are not for a phone app). The server side (`patches.go`, `/api/patches`, `/api/patch/run`, `patches_test.go`) is kept; `docs/PATCHES.md` describes it. Pressing Install scrolls the page to the progress log.
+The page no longer has a patches step (removed 2026-10-13: the 16-pad layout and button remap change Akai's own program and are not for a phone app). The server side (`patches.go`, `/api/patches`, `/api/patch/run`, `patches_test.go`) is kept; `https://github.com/sd88me/mpc-vst-plugins/blob/desktop-v0.5.4/docs/PATCHES.md` describes it. Pressing Install scrolls the page to the progress log.
 
-**Addins** (catalog kind `addin`: libraries MPC loads when it starts, `docs/ADDINS.md`) go through the same steps. A catalog addin or a
+**Addins** (catalog kind `addin`: libraries MPC loads when it starts, `https://github.com/sd88me/mpc-vst-plugins/blob/desktop-v0.5.4/docs/ADDINS.md`) go through the same steps. A catalog addin or a
 dropped addin zip installs to `/data/mpc-addins/<id>` with its own `install.sh -y -n`, inside the same single MPC stop and start, whatever
 location step 3 picked. Step 4 lists the addins found there after the plugins; one installed by its `install.sh` carries its own `uninstall.sh`,
 which removal runs (it takes the addin out of MPC's `LD_PRELOAD` and deletes its folder; `MPC.settings` is not touched). A folder
@@ -65,7 +65,7 @@ The page uses that to state the exact number of MPC restarts before you confirm,
 itself. A zip you drop in is inspected directly.
 
 **MPC OS badge and warnings.** The catalog also says which MPC OS generations a version works on (`os_compat`, `os_compat_why` and `max_glibc` in
-`catalog.json`; columns 15 and 16 of `catalog.tsv`; docs/OS2_SKINS.md). MPC OS 3.x is the standard, so the list shows only one
+`catalog.json`; columns 15 and 16 of `catalog.tsv`; https://github.com/sd88me/mpc-vst-plugins/blob/desktop-v0.5.4/docs/OS2_SKINS.md). MPC OS 3.x is the standard, so the list shows only one
 badge, "MPC OS 2.x tested", on a 2.x-capable version with a 2.x device test (`tested[].firmware` 2.x; 2026-10-12, as on the catalog site). Connecting
 reads the device's glibc (`libc` in the device info: run the libc for its version, or take it from `libc-2.33.so`; nothing is guessed when
 neither works). Against that glibc the list adds a note per plugin, and the install dialog repeats it: a plugin that needs a newer glibc than
