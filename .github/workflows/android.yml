@@ -3,9 +3,9 @@ name: Android installer
 on:
   push:
     branches: [main]
-    paths: ['tools/android/**', '.github/workflows/android.yml']
+    paths: ['tools/android/**', 'tools/desktop/**', 'tools/release/**', '.github/workflows/android.yml']
   pull_request:
-    paths: ['tools/android/**', '.github/workflows/android.yml']
+    paths: ['tools/android/**', 'tools/desktop/**', 'tools/release/**', '.github/workflows/android.yml']
   workflow_dispatch:
     inputs:
       version:
@@ -21,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/desktop/go.mod
       - name: Android app builds (throwaway key)
         run: tools/android/build_apk.sh 0.0.0-check "$RUNNER_TEMP/check.apk"
   release:
@@ -31,24 +34,36 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/desktop/go.mod
       - name: Build the Android app
         # Signed with the project's own key (secrets ANDROID_KEYSTORE_B64, base64 of a PKCS12 keystore, and
         # ANDROID_KEYSTORE_PASS; alias "mpc"), so phones can update from one release to the next. Without them the
         # release goes out without the APK rather than with one signed by a throwaway key. tools/android/README.md.
+        id: build
         env:
           VERSION: ${{ inputs.version }}
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
         run: |
           set -e
-          if [ -z "$KEYSTORE_B64" ]; then echo "::warning::no ANDROID_KEYSTORE_B64 secret: no Android app in this release"; exit 0; fi
+          mkdir -p dist
+          if [ -z "$KEYSTORE_B64" ]; then 
+            echo "::warning::no ANDROID_KEYSTORE_B64 secret: no Android app in this release"
+            echo "has_apk=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           export KEYSTORE="$RUNNER_TEMP/release.p12" KEY_ALIAS=mpc
           echo "$KEYSTORE_B64" | base64 -d > "$KEYSTORE"
           tools/android/build_apk.sh "$VERSION" "dist/mpc-installer-$VERSION-android.apk"
           rm -f "$KEYSTORE"
+          echo "has_apk=true" >> $GITHUB_OUTPUT
       - name: Checksums
+        if: steps.build.outputs.has_apk == 'true'
         run: (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
       - name: Draft release
+        if: steps.build.outputs.has_apk == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
@@ -70,3 +85,6 @@ jobs:
           echo >> notes.md
           echo "On Android, open the APK and allow your browser or file manager to install apps when it asks. The phone must be on the same Wi-Fi as the MPC." >> notes.md
           gh release create "v$VERSION" dist/* --draft --target "$GITHUB_SHA" --title "MPC plugin installer for Android v$VERSION" --notes-file notes.md
+      - name: Skip release when no APK
+        if: steps.build.outputs.has_apk == 'false'
+        run: echo "Skipping release creation - no APK built due to missing keystore secret"
