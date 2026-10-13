@@ -39,6 +39,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: tools/desktop/go.mod
+      - name: Install Python dependencies
+        run: pip install pyaxml
       - name: Build the Android app
         # Signed with the project's own key (secrets ANDROID_KEYSTORE_B64, base64 of a PKCS12 keystore, and
         # ANDROID_KEYSTORE_PASS; alias "mpc"), so phones can update from one release to the next. Without them the
