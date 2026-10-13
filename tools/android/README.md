@@ -81,7 +81,6 @@ on every pull request that the app still builds. `make_icons.py` redraws the lau
 
 ## Status
 
-2026-10-13 (offline only): the APK builds and verifies (v1/v2/v3 signatures, aligned); the bundled x86_64 program ran with `/etc`
+2026-10-13: tested by the author on a real MPC OS device from an Android phone (a Galaxy S23 Ultra); other devices and phones are untested, so reports and issues are welcome. The APK builds and verifies (v1/v2/v3 signatures, aligned); the bundled x86_64 program ran with `/etc`
 hidden (as on Android) and fetched over HTTPS through `SSL_CERT_DIR`; the 32-bit ARM program ran under qemu; Go tests pass,
-including the DNS fallback against a local DNS server. Not yet run on a phone with an MPC: try the draft release on one before
 publishing it.
