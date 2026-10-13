@@ -59,6 +59,8 @@ jobs:
           tools/android/build_apk.sh "$VERSION" "dist/mpc-installer-$VERSION-android.apk"
           rm -f "$KEYSTORE"
           echo "has_apk=true" >> $GITHUB_OUTPUT
+      - name: Copy manual to dist
+        run: cp tools/android/MPC-Installer-Android-Manual.pdf dist/
       - name: Checksums
         if: steps.build.outputs.has_apk == 'true'
         run: (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
