@@ -15,3 +15,26 @@ Full user manual with pictures: [MPC-Installer-Android-Manual.pdf](tools/android
 ## Credit
 
 Built on the desktop installer from [sd88me/mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (tag desktop-v0.5.4). Catalog and plugin zips come from that project. Unofficial, not affiliated with Akai Professional. Use at your own risk.
+## Status
+
+Tested offline only (a fake SSH device, Go race tests, headless Chromium); not yet run on a real MPC or Force from a phone. First on-device reports welcome (open an issue).
+
+## Needs
+
+- Android 6.0+
+- Phone and MPC on the same Wi-Fi
+- Root SSH access on the MPC
+- Internet on the phone for the catalog and plugin downloads (they come from sd88me/mpc-vst-plugins)
+
+## Build
+
+See the [Build section in tools/android/README.md](tools/android/README.md#build) for detailed instructions. The basic command is:
+
+```bash
+tools/android/build_apk.sh <version> [out.apk]
+```
+
+## License
+
+MIT License, see [LICENSE](LICENSE).
+
