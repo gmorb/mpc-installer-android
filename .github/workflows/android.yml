@@ -24,6 +24,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: tools/desktop/go.mod
+      - name: The page's scripts parse
+        run: python3 tools/desktop/check_page.py
+      - name: Go tests
+        run: cd tools/desktop && go vet ./... && go test ./...
       - name: Install Python dependencies
         run: pip install pyaxml
       - name: Android app builds (throwaway key)

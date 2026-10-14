@@ -351,10 +351,10 @@ function defaultRoot() {
 }
 function rootNote(r) {
   var n = [];
-  if (r.noExec) n.push("This drive is mounted noexec right now. If its plugins only show Load Plugin in MPC, restart the MPC with the drive in, then register the plugin folders (the box "Something missing from the plugin list?").");
+  if (r.noExec) n.push("This drive is mounted noexec right now. If its plugins only show Load Plugin in MPC, restart the MPC with the drive in, then register the plugin folders (under \u201cSomething missing from the plugin list?\u201d).");
   if (r.noSymlinks) n.push("Formatted " + r.fs + ", which cannot store symbolic links: a plugin that needs them (Crate Digger) cannot be installed here.");
   if (!r.inContent) n.push("MPC does not list this folder as a content location, so a plugin's screen may not show until you add it in MPC's settings.");
-  if (!r.primary) n.push("If this drive is not in when MPC starts, its plugins drop out of MPC's plugin list until you register them again (the box "Something missing from the plugin list?").");
+  if (!r.primary) n.push("If this drive is not in when MPC starts, its plugins drop out of MPC's plugin list until you register them again (under \u201cSomething missing from the plugin list?\u201d).");
   return n;
 }
 function rootOption(r, box, disabled) {
