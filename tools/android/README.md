@@ -43,8 +43,12 @@ connection to the MPC, the same release zips and `install.sh`. Only the wrapper 
   open. Without it, Android 15+ cuts the network of an app that is not in front, and a copy failed with "software caused
   connection abort" when the person switched apps (user report, 2026-10-13). The installer also reconnects and copies again
   once when the connection drops during a copy (`tools/desktop`).
-- Dark mode follows the phone: a night theme for the window, dark bars, and `data-sys` on the page (more dependable in a
-  WebView than `prefers-color-scheme`). The page's Theme button can force light or dark.
+- Appearance: the page's three-way control (Match the system, Light, Dark) is stored by the app (`window.MPCApp`, SharedPreferences),
+  not in the WebView's storage, because the page's address (a new port each start) and with it localStorage changes every launch.
+  Choosing Light or Dark also recolours the status and navigation bars. With Match the system, the page follows `data-sys`
+  (set by the app; more dependable in a WebView than `prefers-color-scheme`). The banners switch is stored the same way.
+- Before a push, `python3 tools/desktop/check_page.py` checks that the page's scripts parse (CI runs it too): one stray quote
+  in a string stops the whole page, which is how v1.0.0 shipped with a page where nothing worked.
 - The phone must be on the same Wi-Fi as the MPC. Nothing about the device is stored, as on a computer. SSH keys are not used
   (there is no `~/.ssh` on a phone): log in with the root password, or none on a device without one.
 

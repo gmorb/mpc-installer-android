@@ -29,7 +29,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </style></head><body>
 
 <section class="cover">
-<div class="ver">User manual · app version 1.0.0</div>
+<div class="ver">User manual · app version 1.1.0</div>
 <h1>MPC Installer<br>for Android</h1>
 <p class="sub">Install, update and remove VST plugins on a modded Akai MPC or Force from your phone.</p>
 <div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
@@ -70,7 +70,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <h2>4. Choose plugins</h2>
 <div class="pair"><figure><img src="choose-light.png"><figcaption>Step 2: choose plugins (example data)</figcaption></figure><figure><img src="choose-dark.png"><figcaption>The same page in dark mode</figcaption></figure></div>
 <p>The list is the catalog's newest stable release of every downloadable plugin. Use the tabs (Instruments, MIDI, Effects, Addins, All), the search box, the developer filter, the sort and the "show" filter (not on the device, on the device, updates available, only the ones you ticked) to find what you want. Tick the plugins; what you ticked stays ticked while you filter. A bar at the bottom shows the count and an <b>Install</b> button.</p>
-<p>You can also add your own release zips with <b>choose zips</b>, which opens the phone's file picker. A zip is checked before it is accepted.</p>
+<p>You can also add your own release zips with <b>Add plugin zips</b>, which opens the phone's file picker. A zip is checked before it is accepted.</p>
 <p>Plugins already on the device are flagged, and so are updates. Catalog downloads are checked against the catalog's checksums before anything is copied; a mismatch installs nothing.</p>
 
 <h2 class="pb">5. Choose where to install</h2>
@@ -101,7 +101,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <p>Phones sometimes cut a connection (Wi-Fi sleep, a VPN, switching apps). If it drops during the copy, the app reconnects, checks that the device's key is unchanged, and copies once more. Until every copy has finished, nothing is installed and MPC has not been stopped.</p>
 
 <h2>7. Remove plugins</h2>
-<p>Open <b>4 Remove plugins</b> (tap <b>Show</b>). It lists the plugin folders on the device. Tick the ones to remove and tap <b>Remove…</b>. The app stops MPC once, backs up MPC's settings, takes the plugin out of the plugin list, deletes the plugin's folder and starts MPC again.</p>
+<p>Under <b>Device tools</b>, open <b>Remove plugins</b>. It lists the plugin folders on the device. Tick the ones to remove and tap <b>Remove…</b>. The app stops MPC once, backs up MPC's settings, takes the plugin out of the plugin list, deletes the plugin's folder and starts MPC again.</p>
 <ul>
 <li><b>Your own files are kept:</b> ROMs, kits and dumps that the plugin's manifest names as user data are not deleted.</li>
 <li>A plugin the app cannot identify (not from the catalog and not from a zip you added in this session) is listed but cannot be removed from here, because the app cannot tell which files in the folder are yours. Add its release zip to manage it, or remove it by hand.</li>
@@ -109,16 +109,16 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </ul>
 
 <h2>8. Something missing from the plugin list?</h2>
-<p>Installing already registers its plugins, so most people never need this box. Open it (tap <b>Show</b>) when a plugin folder is on the device but MPC does not show it. Typical causes: you copied a folder in by hand, or MPC forgot it because a card was out when it started.</p>
+<p>Installing already registers its plugins, so most people never need this box. Open it under <b>Device tools</b> when a plugin folder is on the device but MPC does not show it. Typical causes: you copied a folder in by hand, or MPC forgot it because a card was out when it started.</p>
 <p>The box shows how many folders are waiting. Tap <b>Register…</b>: the app adds the missing entries, drops entries whose plugin file is gone, leaves everything else alone, backs up MPC's settings first, and restarts MPC once.</p>
 
 <h2>9. Clean up old backups</h2>
-<p>Every install, removal and registering leaves a copy of MPC's settings file (<code>MPC.settings.bak-…</code>) on the device. They are small but nothing deletes them. In <b>5 Clean up old backups</b> choose how many of the newest to keep (10 is a good number) and tap <b>Delete older backups…</b>. The newest backup is never deleted, and MPC is not restarted.</p>
+<p>Every install, removal and registering leaves a copy of MPC's settings file (<code>MPC.settings.bak-…</code>) on the device. They are small but nothing deletes them. Under <b>Device tools</b>, open <b>Clean up old backups</b>, choose how many of the newest to keep (10 is a good number) and tap <b>Delete older backups…</b>. The newest backup is never deleted, and MPC is not restarted.</p>
 
 <h2>10. Dark mode and banners</h2>
 <ul>
-<li><b>Theme:</b> the app follows your phone's light or dark setting. The <b>Theme</b> button forces light, dark or back to automatic. The choice is remembered.</li>
-<li><b>Banners:</b> each catalog plugin shows its banner picture in the list. The pictures come from the web, so turn them off with the <b>Banners</b> switch if you are on mobile data. This is remembered too.</li>
+<li><b>Appearance:</b> the three buttons at the top right choose <i>Match the system</i> (half-filled circle), <i>Light</i> (sun) or <i>Dark</i> (moon). The phone's status and navigation bars follow your choice, and the app remembers it.</li>
+<li><b>Banners:</b> each catalog plugin shows its banner picture in the list. The pictures come from the web, so turn them off with <b>Show banners</b> if you are on mobile data. This is remembered too.</li>
 </ul>
 
 <h2>11. Troubleshooting</h2>
@@ -144,5 +144,5 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
 <li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
 </ul>
-<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.0.0. The app was tested offline against a simulated device; test a first install on your own MPC with a saved project.</p>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.1.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
 </body></html>
