@@ -6,6 +6,7 @@ import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
@@ -19,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -50,7 +52,7 @@ public class MainActivity extends Activity {
     private static final String LOCAL = "http://127.0.0.1:";
     private static final int PICK_FILES = 1;
     // the page's --bg and --fg, light and dark, so the bars around it match
-    private static final int BG_LIGHT = 0xffe9e7e2, FG_LIGHT = 0xff1b1c1f, BG_DARK = 0xff121316, FG_DARK = 0xffececea;
+    private static final int BG_LIGHT = 0xffedeff2, FG_LIGHT = 0xff16181d, BG_DARK = 0xff15171b, FG_DARK = 0xffeceef1;
 
     private FrameLayout root;
     private WebView web;
@@ -98,6 +100,9 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+        // The page's preferences (appearance, banners) live here: its address, and with it the WebView's storage, changes on
+        // every start. Only the page this app loads (127.0.0.1) runs in this WebView; other links open in the phone's browser.
+        web.addJavascriptInterface(new PageBridge(), "MPCApp");
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> cb, FileChooserParams p) {
@@ -123,8 +128,42 @@ public class MainActivity extends Activity {
         startServer();
     }
 
-    private boolean night() {
+    private boolean systemNight() {
         return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** Dark or light as the person chose it on the page (Light, Dark), or the phone's setting (Match the system). */
+    private boolean night() {
+        String t = prefs().getString("theme", "auto");
+        return "dark".equals(t) || (!"light".equals(t) && systemNight());
+    }
+
+    private SharedPreferences prefs() {
+        return getSharedPreferences("page", MODE_PRIVATE);
+    }
+
+    /** window.MPCApp on the page: get and set a few named preferences; setting the appearance recolours the bars. */
+    private class PageBridge {
+        private boolean known(String k) {
+            return "theme".equals(k) || "banners".equals(k);
+        }
+
+        @JavascriptInterface
+        public String get(String k) {
+            return known(k) ? prefs().getString(k, null) : null;
+        }
+
+        @JavascriptInterface
+        public void set(String k, String v) {
+            if (!known(k) || v == null || v.length() > 16) return;
+            prefs().edit().putString(k, v).apply();
+            if ("theme".equals(k)) runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    applyTheme();
+                }
+            });
+        }
     }
 
     /** Bars and background in the phone's light or dark setting (the page follows it through tellPageTheme). */
@@ -144,7 +183,7 @@ public class MainActivity extends Activity {
     /** The page's dark mode follows data-sys, which is more dependable in a WebView than prefers-color-scheme. */
     private void tellPageTheme() {
         if (web.getVisibility() == View.VISIBLE) {
-            web.evaluateJavascript("document.documentElement.dataset.sys='" + (night() ? "dark" : "light") + "'", null);
+            web.evaluateJavascript("document.documentElement.dataset.sys='" + (systemNight() ? "dark" : "light") + "'", null);
         }
     }
 

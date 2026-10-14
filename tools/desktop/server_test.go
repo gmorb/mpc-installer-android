@@ -73,9 +73,9 @@ func TestGuardRefusesEverythingWithoutTheToken(t *testing.T) {
 	if r, _ := h.do("GET", "/", nil, nil); r.StatusCode != 403 {
 		t.Errorf("the page needs ?t=: %d", r.StatusCode)
 	}
-	if r, b := h.do("GET", "/?t="+tok, nil, nil); r.StatusCode != 200 || !strings.Contains(string(b), "MPC plugin installer") {
+	if r, b := h.do("GET", "/?t="+tok, nil, nil); r.StatusCode != 200 || !strings.Contains(string(b), "<h1>MPC Installer</h1>") {
 		t.Errorf("the page with the token: %d", r.StatusCode)
-	} else if csp := r.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "default-src 'none'") || !strings.Contains(csp, "frame-ancestors 'none'") {
+	} else if csp := r.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "default-src 'none'") || !strings.Contains(csp, "frame-ancestors 'none'") || !strings.Contains(csp, "font-src data:") {
 		t.Errorf("CSP: %q", csp)
 	}
 	if r, _ := h.do("GET", "/api/state", nil, nil); r.StatusCode != 200 {
