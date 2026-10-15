@@ -161,6 +161,23 @@ ul.list li:has(input:checked) { background:color-mix(in srgb, var(--accent) 5%, 
 .tag { display:inline-block; vertical-align:2px; font:600 12px/1 var(--sans); border-radius:999px; padding:4px 8px; margin-left:8px; color:var(--ink-2); background:var(--sunken); border:1px solid var(--line); white-space:nowrap; }
 .tag.ok { color:var(--ok); background:var(--ok-soft); border-color:transparent; }
 .tag.up { color:var(--warn); background:var(--warn-soft); border-color:transparent; }
+/* Long lists scroll inside their own box (height set by fitList: about two and a half rows, so the cut-off row shows there is
+   more), so the page below them is one short swipe away. A shadow at the top or bottom edge appears while there is more that way. */
+ul.list.scroll { overflow-y:auto; overscroll-behavior-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin;
+  background:linear-gradient(var(--surface) 30%, transparent) top / 100% 40px no-repeat local,
+             linear-gradient(transparent, var(--surface) 70%) bottom / 100% 40px no-repeat local,
+             radial-gradient(farthest-side at 50% 0, rgb(0 0 0/.16), transparent) top / 100% 12px no-repeat scroll,
+             radial-gradient(farthest-side at 50% 100%, rgb(0 0 0/.16), transparent) bottom / 100% 12px no-repeat scroll,
+             var(--surface); }
+details.collapse ul.list.scroll { background:linear-gradient(var(--sunken) 30%, transparent) top / 100% 40px no-repeat local,
+             linear-gradient(transparent, var(--sunken) 70%) bottom / 100% 40px no-repeat local,
+             radial-gradient(farthest-side at 50% 0, rgb(0 0 0/.16), transparent) top / 100% 12px no-repeat scroll,
+             radial-gradient(farthest-side at 50% 100%, rgb(0 0 0/.16), transparent) bottom / 100% 12px no-repeat scroll,
+             var(--sunken); }
+ul.list.scroll li:has(input:checked) { background:color-mix(in srgb, var(--accent) 5%, transparent); }
+.listfoot { display:flex; justify-content:space-between; gap:12px; margin:6px 2px 0; font-size:13.5px; color:var(--muted); }
+.listfoot[hidden], .listfoot button[hidden] { display:none; }
+.listfoot .linkbtn { padding:0; font-size:13.5px; flex:none; }
 img.banner { display:block; width:100%; max-width:520px; aspect-ratio:2/1; object-fit:cover; border-radius:10px; margin-top:10px; background:var(--sunken); border:1px solid var(--line); }
 
 /* catalog: kind chips, filters, count */
@@ -297,7 +314,8 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
     <label class="f">Sort by<select id="f-sort"></select></label>
   </div>
   <div class="catbar"><span id="catcount" aria-live="polite"></span><button class="linkbtn" type="button" id="resetf" hidden>Clear filters</button><label><input type="checkbox" id="banners"> Show banners</label></div>
-  <ul class="list" id="cat"><li class="small">Loading the catalog…</li></ul>
+  <ul class="list scroll" id="cat" aria-label="Catalog plugins"><li class="small">Loading the catalog…</li></ul>
+  <p class="listfoot" id="catfoot" hidden><span id="catmore"></span><button class="linkbtn" type="button" id="cattop" hidden>Back to top</button></p>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add plugin zip files">Add plugin zips<small>Drop them here, or tap to choose files</small>
     <input id="file" type="file" accept=".zip" multiple hidden></div>
   <ul class="list" id="ups"></ul>
@@ -326,7 +344,7 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 <details id="d4" class="collapse">
   <summary><h2>Remove plugins</h2><span class="hint">Show</span></summary>
   <p class="sub">The plugins on your MPC. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.</p>
-  <ul class="list" id="dev"><li class="small">Connect to see what is on the device.</li></ul>
+  <ul class="list scroll" id="dev" aria-label="Plugins on the device"><li class="small">Connect to see what is on the device.</li></ul>
   <button id="rm" disabled>Remove…</button>
   <p class="msg" id="rmresult" role="status" aria-live="polite"></p>
   <pre class="log" id="rmlog" hidden></pre>
@@ -496,6 +514,22 @@ function osNote(p) {   /* {level, text} when this plugin will not work as expect
   if (g.length && g.indexOf("2.x") < 0 && vgt("2.34", S.libc)) return { level: "warn", text: p.name + " is made for MPC OS 3.x. This device looks like MPC OS 2.x (glibc " + S.libc + "), so its touchscreen page may stay empty; it still works from the Q-Links." };
   return null;
 }
+/* Shows about rows+0.5 rows of a list, then it scrolls inside its box; short lists keep their natural height. Heights are measured,
+   so it fits with or without banners (their size is fixed by aspect-ratio, so it is right before the pictures load). */
+function fitList(ul, rows) {
+  ul.style.maxHeight = "";
+  var lis = ul.querySelectorAll(":scope > li:not(.grp)");
+  if (lis.length <= rows + 1 || !ul.offsetParent) return false;
+  var top = ul.getBoundingClientRect().top, cut = lis[rows].getBoundingClientRect();
+  ul.style.maxHeight = Math.round(cut.top - top + Math.min(cut.height * 0.5, 90)) + "px";
+  return true;
+}
+function fitCat() {
+  var ul = $("cat"), scrolls = fitList(ul, 2), n = ul.querySelectorAll(":scope > li:not(.small)").length;
+  $("catfoot").hidden = !scrolls;
+  if (scrolls) text($("catmore"), n + " plugins here. Scroll inside the list to see them all.");
+  $("cattop").hidden = ul.scrollTop < 40;
+}
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
   var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
@@ -523,6 +557,7 @@ function drawCat() {
   var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
   text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked from the catalog" : "") : "");
   $("resetf").hidden = !filtered;
+  ul.scrollTop = 0; fitCat();
 }
 // A card, USB drive or SSD under /media, never the internal drive: that one is only chosen by hand, after its warning
 function defaultRoot() {
@@ -616,6 +651,7 @@ function drawDev() {
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
   if (!S.dev.length) ul.appendChild(el("li", "small", "No plugin folders found on the device."));
+  fitList(ul, 3);
 }
 function loadBackups() {
   return api("/api/backups").then(function (j) { S.bk = j.backups; drawBk(); refresh(); }).catch(function (e) { S.bk = null; text($("bkinfo"), e.message); refresh(); });
@@ -706,6 +742,10 @@ function startInstall() {
   }).catch(function (e) { msg($("result"), e.message, "err"); });
 }
 $("go").addEventListener("click", startInstall);
+$("cat").addEventListener("scroll", function () { $("cattop").hidden = $("cat").scrollTop < 40; }, { passive: true });
+$("cattop").addEventListener("click", function () { var ul = $("cat"); try { ul.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { ul.scrollTop = 0; } });
+$("d4").addEventListener("toggle", function () { if ($("d4").open) fitList($("dev"), 3); });   // measured once it is visible
+var fitT; window.addEventListener("resize", function () { clearTimeout(fitT); fitT = setTimeout(function () { fitCat(); if ($("d4").open) fitList($("dev"), 3); }, 150); });
 // The bar at the bottom repeats the Install button; when the real one is on screen the bar steps aside
 if (window.IntersectionObserver) new IntersectionObserver(function (es) { S.goSeen = es[0].isIntersecting; refresh(); }).observe($("go"));
 $("go2").addEventListener("click", startInstall);
