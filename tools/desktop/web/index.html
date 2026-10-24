@@ -302,10 +302,11 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
   <div class="devsum" id="devsum"></div>
 </section>
 
-<section id="s2" class="step off" data-state="locked">
+<section id="s2" class="step" data-state="open">
   <span class="pad" aria-hidden="true">2</span>
   <h2>Choose plugins</h2>
   <p class="sub">Tick what you want from the catalog, or add plugin zips you downloaded or built yourself.</p>
+  <p class="note" id="browsenote">You can browse and tick plugins before connecting. Connect to see which ones are already on your MPC, and to install.</p>
   <div class="ktabs" id="ktabs" role="tablist" aria-label="Plugin kind" hidden></div>
   <div class="tools" id="tools" hidden>
     <label class="f wide">Search<input id="q" type="search" placeholder="Name, developer or what it does" autocomplete="off"></label>
@@ -417,7 +418,7 @@ function drawDevSum(info, n, places) {
 }
 function setConnected(c, info, problems) {
   S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
-  $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c);
+  $("browsenote").hidden = !!c; $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c);
   var cs = $("cstate"); cs.classList.toggle("on", !!c); cs.firstChild.textContent = c && info ? "Connected to " + info.host : "Not connected";
   if (!c) $("devsum").textContent = "";
   if (c) {
@@ -430,8 +431,16 @@ function setConnected(c, info, problems) {
   }
   refresh();
 }
+/* After an install, the plugins it put on the device are unticked, so the next install starts from a clean selection. A catalog
+   plugin is unticked once the device reports it at the catalog's version (one that failed stays ticked to try again); your own
+   zips are unticked when the whole install finished. */
+function untickInstalled() {
+  var a = S.after; if (!a) return; S.after = null;
+  a.cat.forEach(function (id) { var p = S.cat.filter(function (x) { return x.id === id; })[0]; if (p && p.installed && !p.update) S.pickCat[id] = false; });
+  if (a.done) { a.ups.forEach(function (h) { S.pickUp[h] = false; }); drawUps(); }
+}
 function loadCatalog() {
-  api("/api/catalog").then(function (j) { S.cat = j.plugins; buildTools(); drawCat(); }).catch(function (e) {
+  return api("/api/catalog").then(function (j) { S.cat = j.plugins; untickInstalled(); buildTools(); drawCat(); refresh(); }).catch(function (e) {
     S.cat = []; var ul = $("cat"); ul.textContent = ""; var li = el("li", "small", e.message); ul.appendChild(li);
   });
 }
@@ -692,9 +701,11 @@ function refresh() {
   $("rm").disabled = !S.connected || S.running || S.problems.length > 0 || !S.dev.some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
   $("s1").dataset.state = S.connected ? "done" : "current";
-  $("s2").dataset.state = !S.connected ? "locked" : n > 0 ? "done" : "current";
+  $("s2").dataset.state = n > 0 ? "done" : S.connected ? "current" : "open";
   $("s3").dataset.state = !S.connected || n === 0 ? "locked" : "current";
-  $("selbar").hidden = !(S.connected && n > 0 && !S.running && S.problems.length === 0) || S.goSeen;
+  $("selbar").hidden = !(n > 0 && !S.running && (!S.connected || S.problems.length === 0)) || (S.connected && S.goSeen);
+  text($("go2"), S.connected ? "Install…" : "Connect to install");
+  if (!S.connected) $("go2").disabled = false;
   text($("selcount"), n + " plugin" + (n === 1 ? "" : "s") + " selected");
 }
 
@@ -748,7 +759,10 @@ $("d4").addEventListener("toggle", function () { if ($("d4").open) fitList($("de
 var fitT; window.addEventListener("resize", function () { clearTimeout(fitT); fitT = setTimeout(function () { fitCat(); if ($("d4").open) fitList($("dev"), 3); }, 150); });
 // The bar at the bottom repeats the Install button; when the real one is on screen the bar steps aside
 if (window.IntersectionObserver) new IntersectionObserver(function (es) { S.goSeen = es[0].isIntersecting; refresh(); }).observe($("go"));
-$("go2").addEventListener("click", startInstall);
+$("go2").addEventListener("click", function () {
+  if (S.connected) { startInstall(); return; }
+  $("s1").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(function () { $("host").focus({ preventScroll: true }); }, 350);
+});
 $("selclear").addEventListener("click", function () {
   S.pickCat = {}; S.ups.forEach(function (p) { S.pickUp[p.handle] = false; }); drawCat(); drawUps(); refresh();
 });
@@ -805,7 +819,7 @@ $("yes").addEventListener("click", function () {
       .catch(function (e) { S.running = false; refresh(); msg($("rmresult"), e.message, "err"); });
     return;
   }
-  var s = selection(); s.confirm = true;
+  var s = selection(); s.confirm = true; S.after = { cat: s.catalog.slice(), ups: s.uploads.slice(), done: false, pending: true };
   S.running = true; refresh(); msg($("result"), "Working…"); var log = $("log"); log.hidden = false; log.textContent = "";
   scrollToProgress();
   api("/api/install", s).then(function () { poll(0, $("log"), $("result"), "Done. MPC is starting again: the new plugins are in the plugin list."); }).catch(function (e) { S.running = false; refresh(); msg($("result"), e.message, "err"); });
@@ -819,6 +833,7 @@ function poll(since, log, resultEl, doneText) {
     if (j.lines && j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
     if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
     S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
+    if (S.after && S.after.pending) { S.after.pending = false; S.after.done = j.state === "done"; }
     api("/api/state").then(function (st) { if (st.device) { S.problems = st.problems || []; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); } });
     refresh();
   }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });
@@ -861,7 +876,7 @@ function pref(k, v) {
 })();
 api("/api/state").then(function (st) {
   S.ups = st.uploads || []; drawUps();
-  if (st.connected) setConnected(true, st.device, st.problems); else refresh();
+  if (st.connected) setConnected(true, st.device, st.problems); else { refresh(); loadCatalog(); }
 }).catch(function () { msg($("connmsg"), "This page needs the link the app printed (it contains the access token).", "err"); });
 </script>
 </body>
