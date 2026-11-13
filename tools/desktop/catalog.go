@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -58,6 +59,11 @@ type CatPlugin struct {
 	Devices     []string `json:"devices,omitempty"`     // the only devices it is for ("mpc-sample"); empty: every MPC and Force
 	VerifiedOn  []string `json:"verified_on"`           // device groups it has a tested.json entry for: "gen1", "gen2", "sample"
 	VST2Folder  string   `json:"vst2_folder,omitempty"` // its folder name in a VST2 Plugins folder (MPC OS 3.10.1+), from the catalog
+	Downloads   int      `json:"downloads"`             // all versions, from GitHub's release counts
+	Tier        string   `json:"tier"`                  // "verified", "listed" or "experimental"
+	Featured    bool     `json:"featured"`
+	Repo        string   `json:"repo,omitempty"` // owner/name on GitHub
+	License     string   `json:"license,omitempty"`
 }
 
 // ForDevice is ForArch for a device that is device ("mpc-sample" for the MPC Sample, "" for any other MPC), after refusing a
@@ -110,6 +116,11 @@ type rawCatalog struct {
 		Latest       string   `json:"latest"`
 		Devices      []string `json:"devices"`
 		VerifiedOn   []string `json:"verified_on"`
+		Downloads    int      `json:"downloads"`
+		Tier         string   `json:"tier"`
+		Featured     bool     `json:"featured"`
+		Repo         string   `json:"repo"`
+		License      string   `json:"license"`
 		Versions     []struct {
 			Version  string           `json:"version"`
 			Size     int64            `json:"size"`
@@ -179,7 +190,7 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version, Screenshot: shot,
 				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, Defer: v.Defer,
 				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64, Gen2Only: v.Gen2Only,
-				Devices: p.Devices, VerifiedOn: ver, VST2Folder: vf})
+				Devices: p.Devices, VerifiedOn: ver, VST2Folder: vf, Downloads: p.Downloads, Tier: p.Tier, Featured: p.Featured, Repo: repoOK(p.Repo), License: p.License})
 			break
 		}
 	}
@@ -276,4 +287,13 @@ func Download(c CatPlugin, dest string, progress func(done, total int64)) error 
 		return fmt.Errorf("%s does not match its sha256 in the catalog: nothing was installed", c.Name)
 	}
 	return nil
+}
+
+var repoRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
+
+func repoOK(r string) string {
+	if repoRe.MatchString(r) && !strings.Contains(r, "..") {
+		return r
+	}
+	return ""
 }

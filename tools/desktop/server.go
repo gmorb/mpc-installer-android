@@ -34,6 +34,7 @@ type App struct {
 	cat     []CatPlugin
 	catAt   time.Time
 	job     *Job
+	sig     signalsCache         // community counts (signals.go)
 	moved   map[string]DevPlugin // old Synths folders the last move put into VST2 Plugins: only these may be deleted by the cleanup
 
 	patches   []Patch
@@ -64,6 +65,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/mkroot", a.mkroot)
 	mux.HandleFunc("/api/mkvst2", a.mkvst2)
 	mux.HandleFunc("/api/remember", a.remember)
+	mux.HandleFunc("/api/signals", a.signals)
 	mux.HandleFunc("/api/migrate", a.migrate)
 	mux.HandleFunc("/api/migrate/cleanup", a.migrateCleanup)
 	mux.HandleFunc("/api/migrate/delete", a.migrateDelete)
