@@ -47,6 +47,23 @@ func TestUIServe(t *testing.T) {
 	cat[1].VerifiedOn = []string{"gen1", "sample"} // Wobble: verified on an MPC Sample
 	cat = append(cat, CatPlugin{ID: "sample-rack", Name: "MPC Sample Rack", Author: "Someone", Kind: "addin", Summary: "A rack page for the MPC Sample's screen.",
 		Version: "1.0.0", Size: 300000, SHA256: strings.Repeat("a", 64), URL: files.URL + "/none", Devices: []string{"mpc-sample"}, Gen2: true, Gen2Only: true})
+	// catalog details and community counts, as the catalog and its signals service give them
+	cat[0].Summary = "A squelchy 303-style bass line synth with an 18 dB ladder filter, accent and slide per step, a built-in distortion stage and a tempo-synced delay. Comes with 64 presets made for MPC drum programs, and runs comfortably on a Gen1 MPC."
+	cat[0].Downloads, cat[0].License, cat[0].Repo, cat[0].Tier = 1840, "GPL-3.0", "acme/acid", "verified"
+	cat[1].Downloads, cat[1].License, cat[1].Repo, cat[1].Featured = 420, "MIT", "acme/wobble", true
+	cat[2].Downloads = 95
+	sig := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/plugin" {
+			fmt.Fprintf(w, `{"id":%q,"working":12,"likes":31,"devices":[{"device":"MPC One+","os":"3.10.1","n":5},{"device":"MPC Live II","os":"3.9.0","n":4},{"device":"Force","os":"3.10.1","n":3}],"recent":[]}`, r.URL.Query().Get("id"))
+			return
+		}
+		w.Write([]byte(`{"counts":{"acid":{"working":12,"likes":31,"versions":{"2.1.0":9,"2.0.0":3}},"wobble":{"working":4,"likes":58,"versions":{"2.1.0":4},"sample":2}}}`))
+	}))
+	defer sig.Close()
+	oldBase, oldClient := signalsBase, signalsClient
+	signalsBase, signalsClient = sig.URL, sig.Client()
+	defer func() { signalsBase, signalsClient = oldBase, oldClient }()
 	if shot := os.Getenv("MPC_UI_SHOT"); shot != "" {
 		for i := range cat {
 			cat[i].Screenshot = shot
