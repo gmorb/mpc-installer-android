@@ -29,6 +29,9 @@
   --shadow:0 1px 2px rgb(22 24 29/.06), 0 8px 24px rgb(22 24 29/.06);
   --sans:"Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono:ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+  --ease:cubic-bezier(0.2, 0, 0, 1); --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  --ring:rgb(22 24 29/.08); --e1:0 0 0 1px var(--ring), 0 1px 2px rgb(22 24 29/.05); --e2:0 0 0 1px var(--ring), 0 2px 4px rgb(22 24 29/.04), 0 12px 32px rgb(22 24 29/.10);
+  --glass:rgb(237 239 242/.78); --img-ring:rgb(0 0 0/.1);
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme=light]):not([data-sys=light]) {
@@ -38,7 +41,9 @@
   --ok:#5fcf8d; --ok-soft:#173326; --warn:#e8b54f; --warn-soft:#382a10; --note:#b7b0ff;
   --pad-top:#2b2f36; --pad-bot:#22252b; --pad-edge:#3b4048; --pad-ink:#a3a9b3;
   --bar:#262a30; --bar-ink:#f3f4f6; --bar-muted:#a3a9b3; --log:#0f1013; --log-ink:#e3e6ea;
-  --shadow:0 1px 2px rgb(0 0 0/.3), 0 10px 30px rgb(0 0 0/.35); color-scheme:dark; } }
+  --shadow:0 1px 2px rgb(0 0 0/.3), 0 10px 30px rgb(0 0 0/.35); color-scheme:dark;
+  --ring:rgb(255 255 255/.07); --e1:0 0 0 1px var(--ring), 0 1px 2px rgb(0 0 0/.3); --e2:0 0 0 1px var(--ring), 0 2px 4px rgb(0 0 0/.3), 0 16px 40px rgb(0 0 0/.45);
+  --glass:rgb(21 23 27/.78); --img-ring:rgb(255 255 255/.1); } }
 :root[data-sys=dark]:not([data-theme=light]), :root[data-theme=dark] {
   --canvas:#15171b; --surface:#1d2025; --sunken:#191b1f; --raised:#262a30;
   --ink:#eceef1; --ink-2:#c5c9d0; --muted:#979ca6; --line:#2c3037; --line-2:#3b4048;
@@ -46,14 +51,16 @@
   --ok:#5fcf8d; --ok-soft:#173326; --warn:#e8b54f; --warn-soft:#382a10; --note:#b7b0ff;
   --pad-top:#2b2f36; --pad-bot:#22252b; --pad-edge:#3b4048; --pad-ink:#a3a9b3;
   --bar:#262a30; --bar-ink:#f3f4f6; --bar-muted:#a3a9b3; --log:#0f1013; --log-ink:#e3e6ea;
-  --shadow:0 1px 2px rgb(0 0 0/.3), 0 10px 30px rgb(0 0 0/.35); color-scheme:dark; }
+  --shadow:0 1px 2px rgb(0 0 0/.3), 0 10px 30px rgb(0 0 0/.35); color-scheme:dark;
+  --ring:rgb(255 255 255/.07); --e1:0 0 0 1px var(--ring), 0 1px 2px rgb(0 0 0/.3); --e2:0 0 0 1px var(--ring), 0 2px 4px rgb(0 0 0/.3), 0 16px 40px rgb(0 0 0/.45);
+  --glass:rgb(21 23 27/.78); --img-ring:rgb(255 255 255/.1); }
 :root[data-theme=light] { color-scheme:light; }
 
 /* ---- base ---------------------------------------------------------------------------------------------------------------- */
 * { box-sizing:border-box; }
 html { -webkit-text-size-adjust:100%; }
 body { margin:0; background:var(--canvas); color:var(--ink); font:400 16px/1.55 var(--sans); padding:0 16px 120px;
-  -webkit-font-smoothing:antialiased; font-feature-settings:"kern","calt"; transition:background-color .2s, color .2s; }
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; font-feature-settings:"kern","calt"; }
 .wrap { max-width:760px; margin-inline:auto; }
 b, strong { font-weight:600; }
 code { font:500 .9em var(--mono); background:var(--sunken); border:1px solid var(--line); border-radius:5px; padding:0 4px; }
@@ -77,7 +84,6 @@ h1 { font:650 21px/1.15 var(--sans); letter-spacing:-.01em; margin:0; }
 /* appearance: three choices, always visible, nothing to cycle through */
 .seg { display:inline-flex; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px; }
 .seg button { width:34px; height:30px; display:grid; place-items:center; border:0; border-radius:999px; background:transparent; color:var(--muted); cursor:pointer; padding:0; }
-.seg button:hover { color:var(--ink); }
 .seg button[aria-checked=true] { background:var(--ink); color:var(--canvas); }
 .seg svg { width:17px; height:17px; }
 
@@ -115,15 +121,12 @@ input::placeholder { color:var(--muted); opacity:1; }
 .row > * { flex:1 1 200px; }
 .row > button { flex:0 0 auto; }
 button, .btn { font:600 15px/1 var(--sans); border-radius:10px; border:1px solid var(--line-2); background:var(--surface); color:var(--ink); padding:0 16px; min-height:46px; cursor:pointer;
-  transition:background-color .15s, border-color .15s, transform .08s; }
-button:hover:not(:disabled) { border-color:var(--ink-2); }
-button:active:not(:disabled) { transform:translateY(1px); }
+  transition:background-color 150ms var(--ease), border-color 150ms var(--ease), scale 150ms var(--ease-out); }
+button:not(:disabled):active { scale:.96; }
 button.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); box-shadow:0 1px 0 rgb(0 0 0/.08), 0 4px 12px rgb(216 48 43/.22); }
-button.primary:hover:not(:disabled) { background:#c42a25; border-color:#c42a25; }
 button:disabled { opacity:.42; cursor:not-allowed; box-shadow:none; }
 input[type=checkbox], input[type=radio] { accent-color:var(--accent); }
 .linkbtn { font:600 14px/1 var(--sans); color:var(--accent-text); background:none; border:0; padding:8px 0; min-height:0; cursor:pointer; }
-.linkbtn:hover:not(:disabled) { text-decoration:underline; }
 
 /* messages */
 .msg { margin:12px 0 0; font-size:14.5px; color:var(--ink-2); white-space:pre-line; }
@@ -199,7 +202,7 @@ img.banner { display:block; width:100%; max-width:520px; aspect-ratio:2/1; objec
 .catbar label { margin-left:auto; display:flex; gap:8px; align-items:center; color:var(--ink-2); cursor:pointer; }
 .drop { border:1.5px dashed var(--line-2); border-radius:14px; padding:18px; text-align:center; color:var(--ink-2); margin-top:14px; cursor:pointer; font-size:15px; transition:border-color .15s, background-color .15s; }
 .drop small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
-.drop:hover, .drop.over { border-color:var(--accent); background:var(--accent-soft); }
+.drop.over { border-color:var(--accent); background:var(--accent-soft); }
 #ups { margin-top:12px; }
 
 /* install: where to, register, progress */
@@ -286,21 +289,97 @@ dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:1
 
 footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 @media (min-width:700px) { body { padding-top:12px; } h1 { font-size:23px; } section { padding-left:54px; } .pad { width:36px; height:36px; } section.step::before { left:17px; top:44px; } }
+
+/* ---- refinements (1.6.0): the app bar, quieter surfaces, thumbnails, the device switch, motion that answers a touch ---------- */
+html { -webkit-tap-highlight-color:transparent; }
+button, .seg, .plat, .ktabs, summary { -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+h1, h2, h3 { text-wrap:balance; }
+.sub, .lede, .note, dialog p { text-wrap:pretty; }
+.n, #catcount, #selcount, .badge, .devsum dd, .whereopt small, ul.list .t .d { font-variant-numeric:tabular-nums; }
+:root.notrans *, :root.notrans *::before, :root.notrans *::after { transition:none !important; }
+
+/* app bar: sticky, translucent, the connection under the name */
+header.appbar { position:sticky; top:0; z-index:6; margin:0 -16px; padding:10px 16px; display:flex; align-items:center; gap:12px;
+  background:var(--glass); -webkit-backdrop-filter:saturate(1.6) blur(16px); backdrop-filter:saturate(1.6) blur(16px);
+  box-shadow:0 1px 0 var(--ring); }
+header.appbar .mark { width:36px; height:36px; flex:none; }
+header.appbar .title { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+header.appbar h1 { font-size:17px; line-height:1.2; letter-spacing:-.005em; }
+header.appbar .cstate { margin:0; padding:0; border:0; background:none; font-size:13px; font-weight:500; color:var(--muted); gap:6px; max-width:100%; }
+header.appbar .cstate::before { width:7px; height:7px; }
+header.appbar .cstate.on { color:var(--ink-2); }
+header.appbar .cstate.on::before { box-shadow:0 0 0 2.5px var(--ok-soft); }
+header.appbar .seg { flex:none; padding:2px; border:1px solid transparent; box-shadow:var(--e1); }
+header.appbar .seg button { width:32px; height:28px; }
+.lede { margin:18px 0 22px; color:var(--ink-2); font-size:15.5px; max-width:56ch; }
+
+/* surfaces: a hairline ring and a soft shadow for elevation, borders kept for inputs and selected states */
+ul.list, .devsum, #regboxl, #restartl, .toolbox .group, .whereopt, .ktabs button, .seg { border-color:transparent; box-shadow:var(--e1); }
+.whereopt:has(input:checked) { box-shadow:0 0 0 1.5px var(--accent), 0 0 0 5px var(--accent-soft); }
+.note { border-color:transparent; box-shadow:inset 0 0 0 1px var(--ring); }
+details.collapse ul.list { box-shadow:inset 0 0 0 1px var(--ring); }
+.ktabs button[aria-selected=true] { box-shadow:none; }
+
+/* device switch: MPC / Force or MPC Sample, as on the catalog site */
+.plat { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; margin:0 0 12px; border-radius:14px; background:var(--sunken); box-shadow:inset 0 0 0 1px var(--ring); }
+.plat[hidden] { display:none; }
+.plat button { min-height:40px; border:0; border-radius:10px; background:transparent; color:var(--ink-2); font-size:14.5px; display:flex; align-items:center; justify-content:center; gap:7px; padding:0 10px;
+  transition:background-color 150ms var(--ease), color 150ms var(--ease), scale 150ms var(--ease-out); }
+.plat button[aria-checked=true] { background:var(--surface); color:var(--ink); box-shadow:var(--e1); }
+.plat .n { font-weight:500; color:var(--muted); font-size:13px; }
+.empty { text-align:center; padding:28px 18px !important; color:var(--ink-2); display:block !important; }
+.empty b { display:block; color:var(--ink); font-size:16px; margin-bottom:4px; }
+
+/* catalog rows: the banner as a thumbnail beside the name, so a row stays short */
+ul.list li { align-items:center; }
+ul.list li .thumb { flex:none; width:84px; aspect-ratio:2/1; object-fit:cover; border-radius:8px; background:var(--sunken); outline:1px solid var(--img-ring); outline-offset:-1px; }
+ul.list .t .d.sum { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+ul.list .t .meta { display:block; color:var(--muted); font-size:13px; margin-top:2px; }
+.tag.dev { color:var(--note); background:color-mix(in srgb, var(--note) 12%, transparent); border-color:transparent; }
+
+/* buttons */
+.btnrow { display:flex; gap:10px; flex-wrap:wrap; }
+button.quiet { background:transparent; box-shadow:none; }
+button.danger { color:var(--accent-text); border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled) { border-color:var(--ink-2); }
+  button.primary:hover:not(:disabled) { background:#c42a25; border-color:#c42a25; }
+  button.danger:hover:not(:disabled) { background:var(--accent-soft); border-color:var(--accent); }
+  .linkbtn:hover:not(:disabled) { text-decoration:underline; text-underline-offset:3px; }
+  .seg button:hover, .plat button:hover { color:var(--ink); }
+  .drop:hover { border-color:var(--accent); background:var(--accent-soft); }
+  ul.list li:hover:not(.grp):not(.small) { background:color-mix(in srgb, var(--ink) 3%, transparent); }
+}
+
+/* dialog: comes in from a little smaller, never from nothing; the page behind fades */
+dialog { border:0; box-shadow:var(--e2); overscroll-behavior:contain; }
+@media (prefers-reduced-motion: no-preference) {
+  dialog[open] { animation:dlg-in 200ms var(--ease-out); }
+  dialog[open]::backdrop { animation:bd-in 200ms var(--ease-out); }
+  details.collapse[open] > *:not(summary) { animation:fold-in 180ms var(--ease-out); }
+}
+@keyframes dlg-in { from { opacity:0; scale:.96; } }
+@keyframes bd-in { from { opacity:0; } }
+@keyframes fold-in { from { opacity:0; translate:0 -4px; } }
+@media (prefers-reduced-motion: reduce) { dialog[open] { animation:bd-in 150ms ease; } }
+
+/* the bar at the bottom: a translucent strip, the count in figures that do not jump */
+#selbar { background:color-mix(in srgb, var(--bar) 92%, transparent); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 0 0 1px rgb(255 255 255/.06), 0 14px 36px rgb(0 0 0/.32); }
+@media (min-width:700px) { header.appbar { margin:0 calc(50% - 50vw); padding-inline:max(16px, calc(50vw - 380px)); } }
 </style>
 </head>
 <body>
 <div class="wrap">
-<header>
+<header class="appbar">
   <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="lit"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-  <h1>MPC Installer</h1>
+  <div class="title"><h1>MPC Installer</h1><div class="cstate" id="cstate" role="status"><span>Not connected</span></div></div>
   <div class="seg" id="theme" role="radiogroup" aria-label="Appearance">
     <button type="button" role="radio" data-mode="auto" title="Match the system" aria-label="Match the system"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 1 0 14z" fill="currentColor" stroke="none"/></svg></button>
     <button type="button" role="radio" data-mode="light" title="Light" aria-label="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="3.4"/><path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M4.2 15.8l1.5-1.5M14.3 5.7l1.5-1.5"/></svg></button>
     <button type="button" role="radio" data-mode="dark" title="Dark" aria-label="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M16.5 12.4A7 7 0 0 1 7.6 3.5a7 7 0 1 0 8.9 8.9z"/></svg></button>
   </div>
-  <p class="lede">Put plugins on a modded MPC or Force, from the catalog or your own zips. Nothing about your MPC is saved.</p>
-  <div class="cstate" id="cstate" role="status"><span>Not connected</span></div>
 </header>
+<p class="lede">Put plugins on your MPC, Force or MPC Sample over Wi-Fi, from the community catalog or zips you already have.</p>
 
 <section id="s1" class="step" data-state="current">
   <span class="pad" aria-hidden="true">1</span>
@@ -322,6 +401,10 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
   <h2>Choose plugins</h2>
   <p class="sub">Tick what you want from the catalog, or add plugin zips you downloaded or built yourself.</p>
   <p class="note" id="browsenote">You can browse and tick plugins before connecting. Connect to see which ones are already on your MPC, and to install.</p>
+  <div class="plat" id="plat" role="radiogroup" aria-label="Which device" hidden>
+    <button type="button" role="radio" data-plat="mpc"><span>MPC / Force</span><span class="n" id="pn-mpc"></span></button>
+    <button type="button" role="radio" data-plat="sample"><span>MPC Sample</span><span class="n" id="pn-sample"></span></button>
+  </div>
   <div class="ktabs" id="ktabs" role="tablist" aria-label="Plugin kind" hidden></div>
   <div class="tools" id="tools" hidden>
     <label class="f wide">Search<input id="q" type="search" placeholder="Name, developer or what it does" autocomplete="off"></label>
@@ -330,7 +413,7 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
     <label class="f">Sort by<select id="f-sort"></select></label>
   </div>
   <div class="catbar"><span id="catcount" aria-live="polite"></span><button class="linkbtn" type="button" id="resetf" hidden>Clear filters</button><label><input type="checkbox" id="banners"> Show banners</label></div>
-  <ul class="list scroll" id="cat" aria-label="Catalog plugins"><li class="small">Loading the catalog…</li></ul>
+  <ul class="list scroll" id="cat" aria-label="Catalog plugins"><li class="small">Getting the catalog…</li></ul>
   <p class="listfoot" id="catfoot" hidden><span id="catmore"></span><button class="linkbtn" type="button" id="cattop" hidden>Back to top</button></p>
   <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add plugin zip files">Add plugin zips<small>Drop them here, or tap to choose files</small>
     <input id="file" type="file" accept=".zip" multiple hidden></div>
@@ -372,10 +455,10 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 <div class="group">
 <section id="s7" class="off" hidden>
 <details id="d7" class="collapse">
-  <summary><h2>Move old plugins to VST2 Plugins</h2><span class="badge" id="mvbadge" hidden></span><span class="hint">Show</span></summary>
-  <p class="sub">These plugins are still in a Synths folder, installed the old way. MPC OS 3.10.1 loads plugins from VST2 Plugins folders instead. Moving converts each one on the MPC and copies it, with your own files in it, to <b id="mvto">a VST2 Plugins folder</b>. Every file is checked against the original, MPC keeps running, and the old copy stays until you choose to delete it.</p>
+  <summary><h2>Old plugins in Synths folders</h2><span class="badge" id="mvbadge" hidden></span><span class="hint">Show</span></summary>
+  <p class="sub">These plugins are still in a Synths folder, installed the old way. MPC OS 3.10.1 loads plugins from VST2 Plugins folders instead. <b>Move</b> converts each one on the MPC and copies it, with your own files in it, to <b id="mvto">a VST2 Plugins folder</b>; every file is checked and the old copy stays until you choose to delete it. <b>Delete</b> removes ones you no longer want, without moving them.</p>
   <ul class="list scroll" id="mvlist"></ul>
-  <button id="mv" disabled>Move to VST2 Plugins…</button>
+  <div class="btnrow"><button id="mv" disabled>Move to VST2 Plugins…</button><button id="mvdel" class="quiet danger" disabled>Delete…</button></div>
   <p class="msg" id="mvres" role="status" aria-live="polite"></p>
   <pre class="log" id="mvlog" hidden></pre>
 </details>
@@ -431,7 +514,7 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 "use strict";
 var T = new URLSearchParams(location.search).get("t") || "";
 try { history.replaceState(null, "", location.pathname); } catch (e) {}
-var S = { pickMv: {}, connected: false, problems: [], nprob: [], method: "synths", vdrives: [], vdrive: "", vdev: [], native: false, cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
+var S = { plat: "mpc", pickMv: {}, connected: false, problems: [], nprob: [], method: "synths", vdrives: [], vdrive: "", vdev: [], native: false, cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
 function $(id) { return document.getElementById(id); }
 function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
@@ -475,6 +558,7 @@ function setConnected(c, info, problems, nprob) {
     var n = (info.installed || []).length;
     S.roots = info.roots || []; S.drives = info.drives || []; S.root = defaultRoot();
     S.vdrives = info.vdrives || []; S.native = !!info.native; S.vdrive = defaultVDrive();
+    S.plat = info.device === "mpc-sample" ? "sample" : "mpc"; drawPlat();   // the list follows the device that connected
     var canV = S.native || S.vdrives.some(function (d) { return d.hasFolder; }) || (S.problems.length > 0 && S.vdrives.length > 0);
     S.method = S.native || (canV && S.problems.length > 0) ? "vst2" : "synths";
     $("methodbox").hidden = !(canV && S.problems.length === 0);
@@ -574,6 +658,33 @@ function loadCatalog() {
 }
 var SHOWS = { "": "All plugins", "new": "Not on the device yet", "on": "Already on the device", "upd": "Updates available", "sel": "Only the ones I ticked" };
 var SORTS = { name: "Name", dev: "Developer", kind: "Kind", size: "Smallest download" };
+/* Which device the list is for, as on the catalog site: MPC / Force hides what is made only for the MPC Sample; MPC Sample lists what is
+   made for it or verified on one (a Gen2 build alone is not enough). Connecting picks the device's own; the choice is remembered. */
+function isSampleOnly(p) { return (p.devices || []).indexOf("mpc-sample") >= 0; }
+function forPlat(p, plat) {
+  plat = plat || S.plat;
+  if (plat === "sample") return isSampleOnly(p) || (p.verified_on || []).indexOf("sample") >= 0;
+  return !(p.devices || []).length;
+}
+function drawPlat() {
+  var box = $("plat"); box.hidden = S.cat.length === 0;
+  Array.prototype.forEach.call(box.querySelectorAll("button"), function (b) {
+    var k = b.dataset.plat; b.setAttribute("aria-checked", S.plat === k ? "true" : "false"); b.tabIndex = S.plat === k ? 0 : -1;
+    text($("pn-" + k), String(S.cat.filter(function (p) { return forPlat(p, k); }).length));
+  });
+}
+function setPlat(k, keep) {
+  if (S.plat === k) return;
+  S.plat = k; if (keep) pref("platform", k);
+  drawPlat(); drawKindTabs(); drawCat();
+}
+Array.prototype.forEach.call(document.querySelectorAll("#plat button"), function (b, i, all) {
+  b.addEventListener("click", function () { setPlat(b.dataset.plat, true); });
+  b.addEventListener("keydown", function (e) {
+    var d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
+    e.preventDefault(); var nb = all[(i + d + all.length) % all.length]; nb.click(); nb.focus();
+  });
+});
 var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins", all: "All" };
 function kindWord(k) { return k === "midi" ? "MIDI plugins" : k === "all" ? "plugins" : (KINDS[k] || "plugins").toLowerCase(); }
 function tabOf(p) { return p.role === "midi" && p.kind === "instrument" ? "midi" : p.kind; }   // MIDI generators and sequencers have their own tab
@@ -585,14 +696,14 @@ function fill(id, opts, val) {
 function buildTools() {
   var devs = {};
   S.cat.forEach(function (p) { devs[p.author] = 1; });
-  if (S.cat.length && !S.cat.some(function (p) { return tabOf(p) === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
+  if (S.cat.length && !S.cat.some(function (p) { return forPlat(p) && tabOf(p) === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
     var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return tabOf(p) === k; }); })[0]; if (first) S.f.kind = first;
   }
   fill("f-dev", [["", "All developers"]].concat(Object.keys(devs).sort().map(function (d) { return [d, d]; })), S.f.dev);
   fill("f-show", Object.keys(SHOWS).map(function (k) { return [k, SHOWS[k]]; }), S.f.show);
   fill("f-sort", Object.keys(SORTS).map(function (k) { return [k, SORTS[k]]; }), S.f.sort);
   $("tools").hidden = S.cat.length === 0;
-  drawKindTabs();
+  drawPlat(); drawKindTabs();
 }
 /* Instruments, Effects, Addins, as on the catalog page. Counts follow the other filters, so a search shows which tab holds the matches.
    Ticks are kept across tabs (the bar at the bottom counts them all). */
@@ -615,6 +726,7 @@ function drawKindTabs() {
 function shownCat(anyKind) {
   var f = S.f, q = f.q.trim().toLowerCase();
   var out = S.cat.filter(function (p) {
+    if (!forPlat(p)) return false;
     if (q && [p.name, p.author, p.summary, p.id].join(" ").toLowerCase().indexOf(q) < 0) return false;
     if (!anyKind && f.kind !== "all" && tabOf(p) !== f.kind) return false;
     if (f.dev && p.author !== f.dev) return false;
@@ -662,7 +774,7 @@ function fitList(ul, rows) {
   return true;
 }
 function fitCat() {
-  var ul = $("cat"), scrolls = fitList(ul, 2), n = ul.querySelectorAll(":scope > li:not(.small)").length;
+  var ul = $("cat"), scrolls = fitList(ul, 3), n = ul.querySelectorAll(":scope > li:not(.small)").length;
   $("catfoot").hidden = !scrolls;
   if (scrolls) text($("catmore"), n + " plugins here. Scroll inside the list to see them all.");
   $("cattop").hidden = ul.scrollTop < 40;
@@ -670,29 +782,39 @@ function fitCat() {
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
   var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
-  var inTab = S.cat.filter(function (p) { return f.kind === "all" || tabOf(p) === f.kind; }).length;
+  var inTab = S.cat.filter(function (p) { return forPlat(p) && (f.kind === "all" || tabOf(p) === f.kind); }).length;
   rows.forEach(function (p) {
     var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c_" + p.id; cb.checked = !!S.pickCat[p.id];
     cb.addEventListener("change", function () { S.pickCat[p.id] = cb.checked; refresh(); if (S.f.show === "sel") drawCat(); });
+    var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents";
+    if (S.banners && p.screenshot) {
+      var im = document.createElement("img"); im.className = "thumb"; im.loading = "lazy"; im.alt = ""; im.referrerPolicy = "no-referrer"; im.src = p.screenshot;
+      im.addEventListener("error", function () { im.remove(); }); lab.appendChild(im);
+    }
     var t = el("div", "t"), b = el("b", null, p.name);
+    if (isSampleOnly(p)) b.appendChild(el("span", "tag dev", "MPC Sample only"));
+    else if (S.plat === "sample" && (p.verified_on || []).indexOf("sample") >= 0) b.appendChild(el("span", "tag ok", "Verified on MPC Sample"));
     if (p.installed) b.appendChild(el("span", "tag ok", "on the device" + (p.installedAt ? " (" + p.installedAt + ")" : "")));
     if (p.update) b.appendChild(el("span", "tag up", "update: v" + p.installedVersion + " → v" + p.version));
     if (p.defer === false) { var dt = el("span", "tag", "restarts MPC itself"); dt.title = "This release has an older installer that restarts MPC on its own, so it adds a restart to the batch."; b.appendChild(dt); }
     var ot = p.kind === "addin" ? null : osTagFor(p); if (ot) b.appendChild(ot);
-    if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
-    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
+    if (p.gen2 && !isSampleOnly(p)) { var gt = el("span", "tag", p.gen2_only ? "64-bit only" : "Gen2"); gt.title = p.gen2_only ? "Only built for 64-bit (aarch64) MPCs: Live III, XL, MPC Sample." : "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
+    t.appendChild(b);
+    t.appendChild(el("span", "meta", "v" + p.version + " · " + p.author + " · " + mb(p.size)));
+    t.appendChild(el("span", "d sum", p.summary));
     var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
-    if (S.banners && p.screenshot) {
-      var im = document.createElement("img"); im.className = "banner"; im.loading = "lazy"; im.alt = ""; im.referrerPolicy = "no-referrer"; im.src = p.screenshot;
-      im.addEventListener("error", function () { im.remove(); }); t.appendChild(im);
-    }
-    var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
+    lab.appendChild(t);
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
   if (!S.cat.length) ul.appendChild(el("li", "small", "The catalog has no downloadable plugins right now."));
-  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + kindWord(f.kind) + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + kindWord(f.kind) + " right now."));
+  else if (!rows.length && S.plat === "sample" && !filtered) {
+    var e = el("li", "small empty"); e.appendChild(el("b", null, "Nothing here for the MPC Sample yet"));
+    e.appendChild(document.createTextNode(f.kind === "all" ? "Plugins show up here once they are made for the Sample or someone has verified them on one." : "Look in the other tabs: " + kindWord(f.kind) + " for the Sample show up here once they are made for it or verified on one."));
+    ul.appendChild(e);
+  }
+  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + kindWord(f.kind) + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + kindWord(f.kind) + " here right now."));
   var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
-  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked from the catalog" : "") : "");
+  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked" : "") : "");
   $("resetf").hidden = !filtered;
   ul.scrollTop = 0; fitCat();
 }
@@ -874,6 +996,7 @@ function refresh() {
   Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
   var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
   $("mv").disabled = !S.connected || S.running || S.nprob.length > 0 || !S.vdrive || !chosenMv().length;
+  $("mvdel").disabled = !S.connected || S.running || !chosenMv().length;
   $("rm").disabled = !S.connected || S.running || probs().length > 0 || !devItems().some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
   $("s1").dataset.state = S.connected ? "done" : "current";
@@ -978,6 +1101,13 @@ $("mv").addEventListener("click", function () {
   text($("dlgtxt"), "About to convert and copy " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + " to " + (d ? d.label : S.vdrive) + " (VST2 Plugins). MPC keeps running and the old copies stay where they are; you can delete them afterwards.");
   $("dlg").showModal();
 });
+$("mvdel").addEventListener("click", function () {
+  var ch = chosenMv();
+  S.mode = "mvdelete"; $("dlgsave").hidden = !!S.problems.length; text($("dlgtitle"), "Delete without moving?"); text($("yes"), "Delete");
+  text($("dlgtxt"), "About to delete " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + " from the Synths folder, without copying " + (ch.length === 1 ? "it" : "them") + " to VST2 Plugins. Everything in " + (ch.length === 1 ? "its folder" : "their folders") + " goes, your own files such as ROMs, kits and dumps included. " +
+    (!S.problems.length ? "Their entries in MPC's old plugin list go too (MPC's settings are backed up first) and MPC restarts once." : ""));
+  $("dlg").showModal();
+});
 $("d7").addEventListener("toggle", function () { if ($("d7").open) fitList($("mvlist"), 3); });
 // After a move: offer to delete the old copies of the ones that made it
 function offerCleanup(j) {
@@ -1017,6 +1147,14 @@ $("yes").addEventListener("click", function () {
     S.running = true; refresh(); msg($("mvres"), "Working…"); var ml = $("mvlog"); ml.hidden = false; ml.textContent = "";
     api("/api/migrate", { items: mitems, drive: S.vdrive, confirm: true }).then(function () {
       poll(0, $("mvlog"), $("mvres"), "Done. On the MPC, the moved plugins are under External Plugins.", function (j) { S.pickMv = {}; offerCleanup(j); });
+    }).catch(function (e) { S.running = false; refresh(); msg($("mvres"), e.message, "err"); });
+    return;
+  }
+  if (S.mode === "mvdelete") {
+    var ditems = chosenMv().map(function (p) { return { root: p.root, folder: p.folder }; });
+    S.running = true; refresh(); msg($("mvres"), "Deleting…"); var dl2 = $("mvlog"); dl2.hidden = false; dl2.textContent = "";
+    api("/api/migrate/delete", { items: ditems, confirm: true }).then(function () {
+      poll(0, $("mvlog"), $("mvres"), "Done. Deleted" + (!S.problems.length ? ", and MPC is starting again." : "."), function () { S.pickMv = {}; });
     }).catch(function (e) { S.running = false; refresh(); msg($("mvres"), e.message, "err"); });
     return;
   }
@@ -1074,6 +1212,7 @@ function pref(k, v) {
   } catch (e) {}
   return null;
 }
+S.plat = pref("platform") === "sample" ? "sample" : "mpc";
 // Banners in the catalog list: on by default, can be turned off (they are pictures from the web, worth saving on mobile data)
 (function () {
   S.banners = pref("banners") !== "off";
@@ -1088,6 +1227,8 @@ function pref(k, v) {
 (function () {
   var box = $("theme"), btns = box.querySelectorAll("button"), cur = pref("theme") || "auto";
   function apply() {
+    var r = document.documentElement; r.classList.add("notrans"); void r.offsetWidth;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { r.classList.remove("notrans"); }); });
     if (cur === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = cur;
     Array.prototype.forEach.call(btns, function (b) { var on = b.dataset.mode === cur; b.setAttribute("aria-checked", on ? "true" : "false"); b.tabIndex = on ? 0 : -1; });
   }
