@@ -15,7 +15,7 @@ app reads the MPC's version when it connects and then installs that way: catalog
 SDK's `tools/legacy_convert.py`), copied into the chosen drive's `VST2 Plugins` folder (which the app can create, `/api/mkvst2`) and
 checked, with MPC running (`nativejob.go`). Older, modded MPCs keep the Synths folder method below. `go test -run TestUIServe` with
 `MPC_UI_SERVE=<port>` serves the page against a simulated 3.10.1 MPC for trying it in a browser. "Remember this MPC" keeps the address
-and password in `remember.json` in the user's config folder (0600), only when ticked (`remember.go`). Plugins still in a Synths folder on such an MPC can be moved into VST2 Plugins, converted on the device, with the old copies deleted afterwards on request (`migrate.go`, `/api/migrate`, `/api/migrate/cleanup`).
+and password in `remember.json` in the user's config folder (0600), only when ticked (`remember.go`). Plugins still in a Synths folder on such an MPC can be moved into VST2 Plugins, converted on the device, with the old copies deleted afterwards on request (`migrate.go`, `/api/migrate`, `/api/migrate/cleanup`), or deleted without moving (`/api/migrate/delete`). The catalog comes from open-mpc.github.io (the old sd88me address as a fallback); the page's MPC / Force | MPC Sample switch follows its `devices` and `verified_on` fields, and `CatPlugin.ForDevice` refuses a Sample-only plugin elsewhere.
 
 ## What it does, in order
 

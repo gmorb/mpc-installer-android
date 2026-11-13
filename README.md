@@ -1,8 +1,10 @@
 # MPC Installer for Android
 
-Install, update and remove VST plugins on an Akai MPC or Force from your Android device. No computer, no SSH commands: connect over Wi-Fi, tick plugins from the catalog, press Install.
+Install, update and remove VST plugins on an Akai MPC, Force or MPC Sample from your Android device. No computer, no SSH commands: connect over Wi-Fi, tick plugins from the catalog, press Install.
 
-**MPC OS 3.10.1 and later:** the app installs into the **VST2 Plugins** folder that MPC now loads plugins from by itself (inMusic's [MPC Plugin Builder SDK](https://github.com/inmusic-software/mpc-plugin-builder-sdk) format). Catalog plugins are converted on the fly before they are sent, the folder can be created from the app (on a card or USB drive first), and MPC keeps running. Plugins you installed the old way can be moved: the app converts them on the MPC, copies them into VST2 Plugins and then asks whether to delete the old copies. Older, modded MPCs keep using the Synths folder method.
+**MPC Sample:** the catalog list has a device switch, MPC / Force or MPC Sample, as on the catalog site (open-mpc.github.io); it follows the connected device, and Sample-only plugins are refused on other MPCs.
+
+**MPC OS 3.10.1 and later:** the app installs into the **VST2 Plugins** folder that MPC now loads plugins from by itself (inMusic's [MPC Plugin Builder SDK](https://github.com/inmusic-software/mpc-plugin-builder-sdk) format). Catalog plugins are converted on the fly before they are sent, the folder can be created from the app (on a card or USB drive first), and MPC keeps running. Plugins you installed the old way can be moved (the app converts them on the MPC, copies them into VST2 Plugins and then asks whether to delete the old copies) or deleted outright. Older, modded MPCs keep using the Synths folder method.
 
 ## Quick start
 

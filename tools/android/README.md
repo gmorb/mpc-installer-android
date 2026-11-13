@@ -31,7 +31,11 @@ app connects it reads the running MPC's version (`/tmp/com.akaipro.mpc.version`)
   `tools/desktop/migrate.go`): each folder is converted on the device (`cp -a` into the staging folder, `plugin.json` and `version.xml`
   written from its `plugin-meta.xml`, the library's ELF header read with `od`), compared file by file with the original and moved into
   place. The page then asks whether to delete the old copies of those that moved; with MPC.settings present that is the usual removal
-  (entry and folder, one MPC restart), otherwise the folders are deleted. Only folders moved in this session can be deleted that way.
+  (entry and folder, one MPC restart), otherwise the folders are deleted. Only folders moved in this session can be deleted that way. Old plugins can also be deleted without moving (`/api/migrate/delete`: folder and old-list entry, everything in the folder included).
+- The catalog is read from `https://open-mpc.github.io/catalog.json` (the project's new home), falling back to the old sd88me address. Its
+  `devices` (`"mpc-sample"`), `verified_on` and `gen2_only` fields drive the MPC / Force | MPC Sample switch; the MPC Sample is told by its
+  settings file (`MPC Sample/MPC Sample.settings`), and a Sample-only plugin is refused elsewhere (`CatPlugin.ForDevice`). A version's
+  `vst2.folder` names its VST2 Plugins folder, used to tell what is installed.
 
 Older, modded MPCs keep the Synths method; when both work, step 3 shows **Install method**.
 

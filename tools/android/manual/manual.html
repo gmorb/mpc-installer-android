@@ -30,9 +30,9 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </style></head><body>
 
 <section class="cover">
-<div class="ver">User manual · app version 1.5.0</div>
+<div class="ver">User manual · app version 1.6.0</div>
 <h1>MPC Installer<br>for Android</h1>
-<p class="sub">Install, update and remove VST plugins on an Akai MPC or Force from your phone: into the VST2 Plugins folder of MPC OS 3.10.1 and later, or the Synths folder of a modded MPC.</p>
+<p class="sub">Install, update and remove VST plugins on an Akai MPC, Force or MPC Sample from your phone: into the VST2 Plugins folder of MPC OS 3.10.1 and later, or the Synths folder of a modded MPC.</p>
 <div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
 <h3>Contents</h3>
 <ol class="toc">
@@ -43,7 +43,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <h2 class="pb">1. What you need</h2>
 <ul>
 <li>An Android phone or tablet, Android 6.0 or later (the app is built for Android 16 and works on older versions).</li>
-<li>An Akai MPC OS standalone device (Force, MPC Live, Live II and Live III, One, X, XL and Key 61) that the app can reach over SSH:
+<li>An Akai MPC OS standalone device (Force, MPC Live, Live II and Live III, One, X, XL, Key 61 and the MPC Sample) that the app can reach over SSH:
   <ul><li><b>MPC OS 3.10.1 or later:</b> turn on <b>developer mode</b>, which starts the MPC's SSH server: Preferences, Info, then tap the version 3 times, the serial number twice and the firmware version once. Also turn on Preferences &gt; Enhancements (Beta) &gt; <b>Enable Enhancements</b> and <b>External Plugin Support</b>, or MPC hides third-party plugins.</li>
   <li><b>Older MPC OS:</b> a modded unit with root SSH access.</li></ul>
   The app refuses a device that is not an MPC OS device.</li>
@@ -75,6 +75,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 
 <h2>4. Choose plugins</h2>
 <div class="pair"><figure><img src="choose-light.png"><figcaption>Step 2: choose plugins (example data)</figcaption></figure><figure><img src="choose-dark.png"><figcaption>The same page in dark mode</figcaption></figure></div>
+<p><b>MPC / Force or MPC Sample.</b> The switch above the tabs picks which device the list is for, as on the catalog site. <i>MPC / Force</i> lists everything except what is made only for the MPC Sample. <i>MPC Sample</i> lists what is made for the Sample (tagged <i>MPC Sample only</i>, such as addins for its screen) and what someone has verified on one (<i>Verified on MPC Sample</i>); a plugin that only has a 64-bit build is not enough to be listed there. When you connect, the switch follows your device, and the app refuses a Sample-only plugin on any other MPC.</p>
 <p>The list is the catalog's newest stable release of every downloadable plugin. You can browse it and tick plugins before connecting; connect to see which are already on your MPC and to install (the bottom bar's <b>Connect to install</b> takes you to step 1). Use the tabs (Instruments, MIDI, Effects, Addins, All), the search box, the developer filter, the sort and the "show" filter (not on the device, on the device, updates available, only the ones you ticked) to find what you want. Tick the plugins; what you ticked stays ticked while you filter. The list scrolls inside its own box, showing two or three plugins at a time, so the rest of the page is one short swipe below it. A bar at the bottom shows the count and an <b>Install</b> button.</p>
 <p>You can also add your own release zips with <b>Add plugin zips</b>, which opens the phone's file picker. A zip is checked before it is accepted. Both kinds work: a release zip from the community catalog, and a zip made with inMusic's MPC Plugin Builder SDK (tagged <i>MPC OS 3.10.1 format</i>). Once a zip of yours has installed, the app drops it from the list; one that failed stays, so you can try again.</p>
 <p>Plugins already on the device are flagged, and so are updates. Catalog downloads are checked against the catalog's checksums before anything is copied; a mismatch installs nothing.</p>
@@ -117,13 +118,14 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 
 <h2>7. Remove plugins, and move old ones to VST2 Plugins</h2>
 <h3>Plugins still in a Synths folder (MPC OS 3.10.1+)</h3>
-<p>If your MPC was set up the old way and now runs MPC OS 3.10.1 or later, plugins you installed before are still in a <code>Synths</code> folder. The app finds them when it connects (the connection summary says how many) and lists them under <b>Device tools</b> in <b>Move old plugins to VST2 Plugins</b>.</p>
+<p>If your MPC was set up the old way and now runs MPC OS 3.10.1 or later, plugins you installed before are still in a <code>Synths</code> folder. The app finds them when it connects (the connection summary says how many) and lists them under <b>Device tools</b> in <b>Old plugins in Synths folders</b>. You can move them, or delete the ones you no longer want.</p>
 <ol>
 <li>Make sure a VST2 Plugins folder is chosen under <b>Install to</b> in step 3 (create one first if needed). That is where they go.</li>
-<li>Open <b>Move old plugins to VST2 Plugins</b>, tick the plugins and tap <b>Move to VST2 Plugins…</b>, then <b>Move</b>.</li>
+<li>Open <b>Old plugins in Synths folders</b>, tick the plugins and tap <b>Move to VST2 Plugins…</b>, then <b>Move</b>.</li>
 <li>Each plugin is converted on the MPC itself: its folder is copied with everything in it, your own files included, gets the <code>plugin.json</code> and <code>version.xml</code> MPC 3.10.1 needs, and every file is compared with the original before the copy is put in place. MPC keeps running. One that fails (for example a 64-bit library on a 32-bit MPC) does not stop the others, and its old folder is untouched.</li>
 <li>When it is done, the app asks <b>Delete the old copies?</b> <b>Delete old copies</b> removes the old folders of the plugins that moved, and their entries in MPC's old plugin list (MPC's settings are backed up first, and MPC restarts once: save your project). <b>Keep them</b> leaves them, but MPC may then list a plugin twice.</li>
 </ol>
+<p><b>Delete without moving.</b> To get rid of old plugins you do not want in VST2 Plugins, tick them and tap <b>Delete…</b> instead. Everything in their folders goes, your own files (ROMs, kits, dumps) included, and so do their entries in MPC's old plugin list (MPC's settings are backed up first, and MPC restarts once).</p>
 <h3>Removing</h3>
 <p><b>VST2 Plugins folder:</b> the list shows the plugins in the VST2 Plugins folders. Removing one deletes its whole folder, including any samples or other files it came with. MPC keeps running; take the plugin off any track that uses it first.</p>
 <p><b>Synths folder:</b></p>
@@ -143,7 +145,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 
 <h2>10. Dark mode and banners</h2>
 <ul>
-<li><b>Appearance:</b> the three buttons at the top right choose <i>Match the system</i> (half-filled circle), <i>Light</i> (sun) or <i>Dark</i> (moon). The phone's status and navigation bars follow your choice, and the app remembers it.</li>
+<li><b>Appearance:</b> the three buttons in the bar at the top choose <i>Match the system</i> (half-filled circle), <i>Light</i> (sun) or <i>Dark</i> (moon). The phone's status and navigation bars follow your choice, and the app remembers it.</li>
 <li><b>Banners:</b> each catalog plugin shows its banner picture in the list. The pictures come from the web, so turn them off with <b>Show banners</b> if you are on mobile data. This is remembered too.</li>
 </ul>
 
@@ -172,5 +174,5 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
 <li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
 </ul>
-<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.5.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.6.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
 </body></html>
