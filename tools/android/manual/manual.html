@@ -5,6 +5,7 @@
 body { font: 10.5pt/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #1c1d21; }
 h1 { font-size: 26pt; margin: 0 0 4pt; letter-spacing: -.5pt; }
 h2 { font-size: 15pt; margin: 22pt 0 6pt; padding-top: 8pt; border-top: 2px solid #d63a2f; break-after: avoid; }
+h4 { font-size: 10.5pt; margin: 10pt 0 2pt; break-after: avoid; }
 h3 { font-size: 11.5pt; margin: 14pt 0 3pt; break-after: avoid; }
 p, li { orphans: 3; widows: 3; }
 .sub { color: #555; font-size: 12pt; margin: 0 0 14pt; }
@@ -29,21 +30,24 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </style></head><body>
 
 <section class="cover">
-<div class="ver">User manual · app version 1.3.0</div>
+<div class="ver">User manual · app version 1.4.0</div>
 <h1>MPC Installer<br>for Android</h1>
-<p class="sub">Install, update and remove VST plugins on a modded Akai MPC or Force from your phone.</p>
+<p class="sub">Install, update and remove VST plugins on an Akai MPC or Force from your phone: into the VST2 Plugins folder of MPC OS 3.10.1 and later, or the Synths folder of a modded MPC.</p>
 <div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
 <h3>Contents</h3>
 <ol class="toc">
-<li>What you need</li><li>Install the app</li><li>Connect to your MPC</li><li>Choose plugins</li><li>Choose where to install</li><li>Install</li><li>Remove plugins</li><li>Something missing from the plugin list?</li><li>Clean up old backups</li><li>Dark mode and banners</li><li>Troubleshooting</li><li>Good to know</li>
+<li>What you need</li><li>Install the app</li><li>Connect to your MPC</li><li>Choose plugins</li><li>Choose the method and where to install</li><li>Install</li><li>Remove plugins</li><li>Something missing from the plugin list?</li><li>Clean up old backups</li><li>Dark mode and banners</li><li>Troubleshooting</li><li>Good to know</li>
 </ol>
 </section>
 
 <h2 class="pb">1. What you need</h2>
 <ul>
 <li>An Android phone or tablet, Android 6.0 or later (the app is built for Android 16 and works on older versions).</li>
-<li>An Akai MPC OS standalone device that has <b>root SSH access</b> (a modded unit; stock MPC OS does not offer it): Force, MPC Live and Live II, One, X and Key 61. The app refuses a device that is not an MPC OS device.</li>
-<li>The device's <b>IP address</b>, and its root password if it has one. Your router assigns the address, so look it up on the device (network settings) or in your router each time.</li>
+<li>An Akai MPC OS standalone device (Force, MPC Live, Live II and Live III, One, X, XL and Key 61) that the app can reach over SSH:
+  <ul><li><b>MPC OS 3.10.1 or later:</b> turn on <b>developer mode</b>, which starts the MPC's SSH server: Preferences, Info, then tap the version 3 times, the serial number twice and the firmware version once. Also turn on Preferences &gt; Enhancements (Beta) &gt; <b>Enable Enhancements</b> and <b>External Plugin Support</b>, or MPC hides third-party plugins.</li>
+  <li><b>Older MPC OS:</b> a modded unit with root SSH access.</li></ul>
+  The app refuses a device that is not an MPC OS device.</li>
+<li>The device's <b>IP address</b>, and its password if it has one. Your router assigns the address, so look it up on the device (network settings) or in your router each time.</li>
 <li>The phone and the MPC on the <b>same Wi-Fi network</b>.</li>
 <li>A <b>card, USB drive or SSD</b> in the MPC, formatted so it can hold symbolic links (ext4 is best). FAT, exFAT and NTFS drives are refused for plugins that need links.</li>
 </ul>
@@ -62,25 +66,33 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <div class="pair"><figure><img src="connect.png"><figcaption>Step 1: connect</figcaption></figure></div>
 <ol>
 <li>Type the MPC's IP address, for example <code>192.168.1.50</code>.</li>
-<li>Type the root password. Leave it empty only if the device's root has no password. Keys are not used on a phone.</li>
+<li>Type the password. Leave it empty only if the device has none. Keys are not used on a phone.</li>
+<li>Tick <b>Remember this MPC</b> if you want the address and password filled in next time.</li>
 <li>Tap <b>Connect</b>.</li>
 </ol>
-<p>The app shows what it found: the device type, the plugin folders already on it, and the places plugins can go. It also shows the device's <b>key fingerprint</b>. If it changes between sessions for the same MPC, be careful: it can mean you are talking to a different device. Nothing about the device is saved on the phone.</p>
+<p><b>Remember this MPC</b> saves the address and password on this phone only, inside the app's own storage, and only after they connected. Untick it to forget them straight away. Without it, nothing about your MPC is saved.</p>
+<p>The app shows what it found: the MPC OS version, the plugins already on it, and the places plugins can go. It also shows the device's <b>key fingerprint</b>. If it changes between sessions for the same MPC, be careful: it can mean you are talking to a different device.</p>
 
 <h2>4. Choose plugins</h2>
 <div class="pair"><figure><img src="choose-light.png"><figcaption>Step 2: choose plugins (example data)</figcaption></figure><figure><img src="choose-dark.png"><figcaption>The same page in dark mode</figcaption></figure></div>
 <p>The list is the catalog's newest stable release of every downloadable plugin. You can browse it and tick plugins before connecting; connect to see which are already on your MPC and to install (the bottom bar's <b>Connect to install</b> takes you to step 1). Use the tabs (Instruments, MIDI, Effects, Addins, All), the search box, the developer filter, the sort and the "show" filter (not on the device, on the device, updates available, only the ones you ticked) to find what you want. Tick the plugins; what you ticked stays ticked while you filter. The list scrolls inside its own box, showing two or three plugins at a time, so the rest of the page is one short swipe below it. A bar at the bottom shows the count and an <b>Install</b> button.</p>
-<p>You can also add your own release zips with <b>Add plugin zips</b>, which opens the phone's file picker. A zip is checked before it is accepted.</p>
+<p>You can also add your own release zips with <b>Add plugin zips</b>, which opens the phone's file picker. A zip is checked before it is accepted. Both kinds work: a release zip from the community catalog, and a zip made with inMusic's MPC Plugin Builder SDK (tagged <i>MPC OS 3.10.1 format</i>). Once a zip of yours has installed, the app drops it from the list; one that failed stays, so you can try again.</p>
 <p>Plugins already on the device are flagged, and so are updates. Catalog downloads are checked against the catalog's checksums before anything is copied; a mismatch installs nothing.</p>
 
-<h2 class="pb">5. Choose where to install</h2>
-<div class="pair"><figure><img src="where.png"><figcaption>Step 3: the Install to choices (example data)</figcaption></figure></div>
+<h2 class="pb">5. Choose the method and where to install</h2>
+<p>MPC OS 3.10.1 brought support for third-party VST2 plugins: MPC loads them from a folder named <code>VST2 Plugins</code> at the top of any drive, in the format of inMusic's MPC Plugin Builder SDK. Older, modded MPCs load plugins from a <code>Synths</code> folder that has to be registered in MPC's settings. The app reads the MPC's version when it connects and picks the method for you. When both work, step 3 shows <b>Install method</b> so you can choose.</p>
+<div class="pair"><figure><img src="where-vst2-new.png"><figcaption>No VST2 Plugins folder yet (example data)</figcaption></figure><figure><img src="where.png"><figcaption>The folder made, ready to install</figcaption></figure></div>
+<h3>VST2 Plugins folder (MPC OS 3.10.1 and later)</h3>
+<p>Under <b>Install to</b> the app lists the cards, USB drives and SSDs that already have a <code>VST2 Plugins</code> folder. A drive without one is listed with a <b>Create VST2 Plugins folder</b> button: tap it on the drive you want, and the app makes the folder and selects it. Cards and USB drives come first; the MPC's internal storage is hidden behind <i>"Use the MPC's internal storage instead (not recommended)"</i>, for the same reason as below, and MPC only notices new plugins there when it starts.</p>
+<p>Plugins from the catalog are made for the older Synths method, so the app <b>converts each one on the fly</b> before sending it, the way inMusic's own conversion tool does: the plugin's folder gets a <code>plugin.json</code> and a <code>version.xml</code>, loses the old installer's files, and is named <i>Manufacturer - VST - Name</i> as MPC expects. The plugin itself is not changed. The app also checks that its library fits your MPC (32-bit or 64-bit).</p>
+<p><b>Restart MPC afterwards</b> is off by default. MPC notices new plugins on cards and USB drives by itself; tick it when a plugin does not show up, or when it was already loaded on a track. A restart loses unsaved work.</p>
+<h3>Synths folder (modded MPCs)</h3>
 <p>Under <b>Install to</b> the app lists the drives it found under <code>/media</code> that already have a <code>Synths</code> folder, with the free space on each. Pick one. It is chosen for you when there is only one.</p>
-<h3>No Synths folder yet?</h3>
+<h4>No Synths folder yet?</h4>
 <p>If a card or drive has none, the page lists it with a <b>Create Synths folder</b> button. Tap it and the app makes the folder on that drive, then selects it. Install stays off until a place is chosen; the app never installs somewhere you did not pick.</p>
-<h3>The internal drive</h3>
+<h4>The internal drive</h4>
 <p>The internal drive is hidden behind <i>"Use the MPC's internal drive instead (not recommended)"</i>. It is the MPC's built-in flash storage (eMMC): every install, update and file a plugin writes adds wear, and if it fails the MPC itself needs repair. A card, USB drive or SSD is cheap to replace. Open that section and tick <i>"I understand"</i> only if you have no other choice.</p>
-<h3>Notes the app may show</h3>
+<h4>Notes the app may show</h4>
 <ul>
 <li><b>Not in MPC's content locations:</b> a plugin's screen may not show until you add the folder in MPC's own settings.</li>
 <li><b>Drive not in when MPC starts:</b> its plugins drop out of the plugin list until you register them again (section 8).</li>
@@ -89,6 +101,8 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <p>Under the choices there is a tick box, on by default: <b>after installing, register every plugin folder on the device with MPC</b>. This is built into the app, so nothing has to be on the MPC. It adds missing entries to MPC's plugin list, drops broken ones, and backs up MPC's settings first.</p>
 
 <h2>6. Install</h2>
+<p><b>With the VST2 Plugins folder:</b> tap <b>Install…</b>, check the summary and tap <b>Install</b>. MPC keeps running. Each plugin is converted if needed, copied to a hidden staging folder on the drive, moved into <code>VST2 Plugins</code> (an older copy is replaced) and its files are checked. A plugin that fails does not stop the others. When it says Done, open the plugin browser on the MPC: the plugins are under <b>External Plugins</b>.</p>
+<p><b>With the Synths folder:</b></p>
 <ol>
 <li>Tap <b>Install…</b> and read the summary: what will be installed, where, and how many times MPC restarts (usually once).</li>
 <li><b>Save your project on the MPC first.</b> MPC is stopped and started again, and anything unsaved is lost.</li>
@@ -102,6 +116,8 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <p>Phones sometimes cut a connection (Wi-Fi sleep, a VPN, switching apps). If it drops during the copy, the app reconnects, checks that the device's key is unchanged, and copies once more. Until every copy has finished, nothing is installed and MPC has not been stopped.</p>
 
 <h2>7. Remove plugins</h2>
+<p><b>VST2 Plugins folder:</b> the list shows the plugins in the VST2 Plugins folders. Removing one deletes its whole folder, including any samples or other files it came with. MPC keeps running; take the plugin off any track that uses it first.</p>
+<p><b>Synths folder:</b></p>
 <p>Under <b>Device tools</b>, open <b>Remove plugins</b>. It lists the plugin folders on the device. Tick the ones to remove and tap <b>Remove…</b>. The app stops MPC once, backs up MPC's settings, takes the plugin out of the plugin list, deletes the plugin's folder and starts MPC again.</p>
 <ul>
 <li><b>Your own files are kept:</b> ROMs, kits and dumps that the plugin's manifest names as user data are not deleted.</li>
@@ -109,11 +125,11 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <li>Addins (libraries MPC loads at start-up) are listed last. Removing one runs its own uninstaller, which also takes it out of MPC's start-up list.</li>
 </ul>
 
-<h2>8. Something missing from the plugin list?</h2>
+<h2>8. Something missing from the plugin list? (Synths folder)</h2>
 <p>Installing already registers its plugins, so most people never need this box. Open it under <b>Device tools</b> when a plugin folder is on the device but MPC does not show it. Typical causes: you copied a folder in by hand, or MPC forgot it because a card was out when it started.</p>
 <p>The box shows how many folders are waiting. Tap <b>Register…</b>: the app adds the missing entries, drops entries whose plugin file is gone, leaves everything else alone, backs up MPC's settings first, and restarts MPC once.</p>
 
-<h2>9. Clean up old backups</h2>
+<h2>9. Clean up old backups (Synths folder)</h2>
 <p>Every install, removal and registering leaves a copy of MPC's settings file (<code>MPC.settings.bak-…</code>) on the device. They are small but nothing deletes them. Under <b>Device tools</b>, open <b>Clean up old backups</b>, choose how many of the newest to keep (10 is a good number) and tap <b>Delete older backups…</b>. The newest backup is never deleted, and MPC is not restarted.</p>
 
 <h2>10. Dark mode and banners</h2>
@@ -126,10 +142,12 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <table>
 <tr><th style="width:36%">You see</th><th>Try this</th></tr>
 <tr><td>Connect times out</td><td>Wrong IP, the MPC is asleep, or the phone is on another network (mobile data, guest Wi-Fi). Look the IP up again.</td></tr>
-<tr><td>Permission denied</td><td>Wrong password, or this unit has no root SSH access.</td></tr>
+<tr><td>Permission denied, or Connect times out on MPC OS 3.10.1+</td><td>Wrong password, or developer mode is off: turn it on again (Preferences, Info: the version 3 times, the serial number twice, the firmware version once). On older firmware, the unit needs root SSH access (a modded MPC).</td></tr>
 <tr><td>"Not an MPC OS device"</td><td>The address belongs to another computer. Check the IP.</td></tr>
 <tr><td>Install is greyed out</td><td>No install location is chosen. Pick a drive, or create a Synths folder on one (section 5).</td></tr>
 <tr><td>"software caused connection abort"</td><td>The phone cut the connection. The app reconnects and retries once by itself. If it still fails, stay in the app, keep the screen on, and try again. Nothing is installed after a failed copy.</td></tr>
+<tr><td>A plugin is not in MPC's browser (MPC OS 3.10.1+)</td><td>Check Preferences &gt; Enhancements (Beta): Enable Enhancements and External Plugin Support must both be on. Look under External Plugins. If it is still missing, install again with Restart MPC afterwards ticked.</td></tr>
+<tr><td>"needs arm64" or "built for arm32"</td><td>The plugin's library does not fit your MPC: 64-bit MPCs (Live III, XL) need a 64-bit build. Get the other zip, or ask its author for one.</td></tr>
 <tr><td>Plugin only shows "Load Plugin"</td><td>Restart the MPC with the drive in, then register the folders (section 8). The drive may have been mounted noexec at that moment.</td></tr>
 <tr><td>Plugin screen is empty</td><td>The folder is not one of MPC's content locations, or the plugin has no skin for your MPC OS version (MPC OS 2.x versus 3.x).</td></tr>
 <tr><td>Not enough room, or drive refused</td><td>Free space on the drive, or use an ext4 drive: FAT, exFAT and NTFS cannot hold symbolic links.</td></tr>
@@ -139,11 +157,11 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 
 <h2>12. Good to know</h2>
 <ul>
-<li>Nothing about your MPC (address, password) is stored on the phone.</li>
+<li>Nothing about your MPC (address, password) is stored on the phone unless you tick <b>Remember this MPC</b>; then only the address and password are kept, in the app's own storage, until you untick it.</li>
 <li>Quitting the app while an install is running can leave it half done. The back button asks before quitting.</li>
 <li>Installing runs a script as root on the MPC and edits MPC's plugin settings; a backup is always made first.</li>
 <li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
 <li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
 </ul>
-<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.3.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.4.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
 </body></html>

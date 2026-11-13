@@ -1,12 +1,15 @@
 # MPC Installer for Android
 
-Install, update and remove VST plugins on a modded Akai MPC or Force from your Android device. No computer, no SSH commands: connect over Wi-Fi, tick plugins from the catalog, press Install.
+Install, update and remove VST plugins on an Akai MPC or Force from your Android device. No computer, no SSH commands: connect over Wi-Fi, tick plugins from the catalog, press Install.
+
+**MPC OS 3.10.1 and later:** the app installs into the **VST2 Plugins** folder that MPC now loads plugins from by itself (inMusic's [MPC Plugin Builder SDK](https://github.com/inmusic-software/mpc-plugin-builder-sdk) format). Catalog plugins are converted on the fly before they are sent, the folder can be created from the app (on a card or USB drive first), and MPC keeps running. Older, modded MPCs keep using the Synths folder method.
 
 ## Quick start
 
 1. Download `mpc-installer-<version>-android.apk` from the project's releases and open it on the phone. Allow installing from your browser or Files app when Android asks.
-2. Phone and MPC on the same Wi-Fi. Open **MPC Installer**, type the MPC's IP address and root password, tap **Connect**.
-3. Tick plugins, choose the drive under **Install to** (tap **Create Synths folder** if it has none), tap **Install…**, confirm. Save your project first: MPC restarts. Keep the app open until it says Done.
+2. On MPC OS 3.10.1+, turn on developer mode on the MPC (Preferences, Info: tap the version 3 times, the serial number twice, the firmware version once), and Preferences > Enhancements (Beta) > **Enable Enhancements** and **External Plugin Support**.
+3. Phone and MPC on the same Wi-Fi. Open **MPC Installer**, type the MPC's IP address and password, tick **Remember this MPC** if you like, tap **Connect**.
+4. Tick plugins (you can browse before connecting), choose the drive under **Install to** (tap **Create VST2 Plugins folder** if it has none), tap **Install…**, confirm. Keep the app open until it says Done. On the MPC the plugins are under **External Plugins**.
 
 ## User manual
 
@@ -31,7 +34,7 @@ Download the latest release from the [releases page](https://github.com/gmorb/mp
 
 - Android 6.0+
 - Phone and MPC on the same Wi-Fi
-- Root SSH access on the MPC
+- SSH access on the MPC: developer mode on MPC OS 3.10.1+, or a modded unit with root SSH on older firmware
 - Internet on the phone for the catalog and plugin downloads (they come from sd88me/mpc-vst-plugins)
 
 ## Build

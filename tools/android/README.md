@@ -11,6 +11,29 @@ Wi-Fi, tick plugins from the catalog, press Install.
   plugin banners, and it reconnects and copies again if the phone cuts the connection mid-copy.
 - Same program, same release zips and same `install.sh` as the desktop installer (`tools/desktop`); only the wrapper is new.
 
+## MPC OS 3.10.1: the VST2 Plugins folder
+
+MPC OS 3.10.1 loads third-party VST2 plugins itself, from a folder named `VST2 Plugins` at the top of any drive, in the format of
+inMusic's [MPC Plugin Builder SDK](https://github.com/inmusic-software/mpc-plugin-builder-sdk) (`docs/plugin-folder-format.md`). When the
+app connects it reads the running MPC's version (`/tmp/com.akaipro.mpc.version`) and, from 3.10.1 on, installs that way
+(`tools/desktop/native.go`, `nativejob.go`):
+
+- It lists the drives under `/media` (and `/nvme`) and whether each has a `VST2 Plugins` folder; **Create VST2 Plugins folder** makes one on
+  the drive you pick (cards and USB drives first, the internal storage behind a warning).
+- Catalog release zips (the Synths-folder kind, with `plugin-meta.xml`) are converted on the fly, like the SDK's `tools/legacy_convert.py`:
+  the plugin folder keeps its files, gains `plugin.json` (name, manufacturer, version, `format: vst2`, kind, uid as a four-character code,
+  `file32` or `file64`) and `version.xml`, loses `plugin-meta.xml` and `mpc-plugin.json`, and is named `<Manufacturer> - VST - <Name>`. The
+  library's ELF header must match the MPC (32-bit or 64-bit). Zips made with the SDK go in as they are.
+- Each folder is streamed as a tar into `<drive>/.mpc-installer-stage`, moved into `VST2 Plugins` (an older copy is replaced, and put back
+  if the new one's file sizes do not match), and MPC keeps running. **Restart MPC afterwards** is optional.
+- Removing deletes the plugin's folder. Registering and MPC.settings backups are for the Synths method only.
+
+Older, modded MPCs keep the Synths method; when both work, step 3 shows **Install method**.
+
+**Remember this MPC** saves the address and password in `remember.json` in the app's config folder (`os.UserConfigDir()`: inside the
+app's private storage on Android), mode 0600, only after they connected; unticking deletes it. An uploaded zip that installed is dropped
+from the app; one that failed stays.
+
 ## Quick start
 
 1. Download `mpc-installer-<version>-android.apk` from the project's releases and open it on the phone. Allow installing from your
