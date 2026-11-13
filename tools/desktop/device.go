@@ -35,7 +35,7 @@ type Config struct {
 }
 
 func defaultConfig() Config {
-	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", RootGlobs: "/sdcard/Synths /media/*/Synths", DriveGlob: "/media/*", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings", AddinsDir: "/data/mpc-addins",
+	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", RootGlobs: "/sdcard/Synths /media/*/Synths", DriveGlob: "/media/*", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/MPC?Sample/MPC?Sample.settings", AddinsDir: "/data/mpc-addins",
 		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so",
 		VSTDrives: "/media/* /nvme", VersionFile: "/tmp/com.akaipro.mpc.version", ReleaseFiles: "/etc/az0x-release /etc/az01-release"}
 }
@@ -57,6 +57,7 @@ type DeviceInfo struct {
 	Store       map[string]string            `json:"store"`      // plugin id -> version recorded by this app or mpc-store.sh, in the internal drive
 	MPCVersion  string                       `json:"mpcVersion"` // what the running MPC app says it is ("3.10.1.21"), empty when it is not running
 	Firmware    string                       `json:"firmware"`
+	Device      string                       `json:"device"`   // "mpc-sample" on the MPC Sample (its settings file is "MPC Sample.settings"), "" on other MPCs
 	Native      bool                         `json:"native"`   // MPC OS 3.10.1 or later: it loads plugins from a VST2 Plugins folder by itself (native.go)
 	VDrives     []VDrive                     `json:"vdrives"`  // drives a VST2 Plugins folder can be on, with or without one yet
 	VPlugins    []VPlugin                    `json:"vplugins"` // plugin folders in those VST2 Plugins folders
@@ -536,6 +537,9 @@ true`, shQuote(d.cfg.SynthsDir), d.cfg.SettingsGlob, shQuote(d.cfg.RemoteTmp), d
 	}
 	if st, ok := info.Stores[d.cfg.SynthsDir]; ok {
 		info.Store = st
+	}
+	if strings.Contains(info.Settings, "MPC Sample") {
+		info.Device = "mpc-sample"
 	}
 	info.Native = versionAtLeast(info.MPCVersion, nativeMinVersion) || versionAtLeast(info.Firmware, nativeMinVersion)
 	sort.SliceStable(info.VDrives, func(i, j int) bool { return !info.VDrives[i].Internal && info.VDrives[j].Internal }) // cards and drives first

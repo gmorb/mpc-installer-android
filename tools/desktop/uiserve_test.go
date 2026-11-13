@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -42,6 +43,14 @@ func TestUIServe(t *testing.T) {
 	defer func() { httpClient = old }()
 	for i := range cat {
 		cat[i].URL = files.URL + "/" + cat[i].ID
+	}
+	cat[1].VerifiedOn = []string{"gen1", "sample"} // Wobble: verified on an MPC Sample
+	cat = append(cat, CatPlugin{ID: "sample-rack", Name: "MPC Sample Rack", Author: "Someone", Kind: "addin", Summary: "A rack page for the MPC Sample's screen.",
+		Version: "1.0.0", Size: 300000, SHA256: strings.Repeat("a", 64), URL: files.URL + "/none", Devices: []string{"mpc-sample"}, Gen2: true, Gen2Only: true})
+	if shot := os.Getenv("MPC_UI_SHOT"); shot != "" {
+		for i := range cat {
+			cat[i].Screenshot = shot
+		}
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:"+port)
 	if err != nil {

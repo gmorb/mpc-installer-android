@@ -15,7 +15,13 @@ import (
 	"time"
 )
 
-const defaultCatalogURL = "https://sd88me.github.io/mpc-vst-plugins/catalog.json"
+// The catalog moved with the project to the open-mpc organisation; the old address is tried when the new one cannot be reached.
+const defaultCatalogURL = "https://open-mpc.github.io/catalog.json"
+
+var fallbackCatalogURLs = map[string]string{defaultCatalogURL: "https://sd88me.github.io/mpc-vst-plugins/catalog.json"}
+
+// deviceNames are the catalog's device ids (registry "devices") as people know them.
+var deviceNames = map[string]string{"mpc-sample": "MPC Sample"}
 
 // Asset is one downloadable zip of a version: the Gen2 (aarch64) build sits beside the main (armv7) one.
 type Asset struct {
@@ -47,16 +53,43 @@ type CatPlugin struct {
 	Tested2x    bool     `json:"tested_2x"`     // the version has a tested.json entry on MPC OS 2.x firmware
 	Gen2        bool     `json:"gen2"`          // the version also has a Gen2 (aarch64) zip; SHA256/URL/Size above are the Gen1 (armv7) one
 	Aarch64     *Asset   `json:"aarch64,omitempty"`
-	Screenshot  string   `json:"screenshot,omitempty"` // https picture for the list (1280×628, shown at 2:1); empty when there is none
+	Gen2Only    bool     `json:"gen2_only"`             // no armv7 zip at all: SHA256/URL/Size above are the aarch64 one
+	Screenshot  string   `json:"screenshot,omitempty"`  // https picture for the list (1280×628, shown at 2:1); empty when there is none
+	Devices     []string `json:"devices,omitempty"`     // the only devices it is for ("mpc-sample"); empty: every MPC and Force
+	VerifiedOn  []string `json:"verified_on"`           // device groups it has a tested.json entry for: "gen1", "gen2", "sample"
+	VST2Folder  string   `json:"vst2_folder,omitempty"` // its folder name in a VST2 Plugins folder (MPC OS 3.10.1+), from the catalog
+}
+
+// ForDevice is ForArch for a device that is device ("mpc-sample" for the MPC Sample, "" for any other MPC), after refusing a
+// plugin limited to other devices: an addin made for the Sample's screen does nothing on a Live III.
+func (c CatPlugin) ForDevice(arch, device string) (CatPlugin, error) {
+	if len(c.Devices) > 0 {
+		ok := false
+		var names []string
+		for _, d := range c.Devices {
+			ok = ok || d == device
+			if n := deviceNames[d]; n != "" {
+				d = n
+			}
+			names = append(names, d)
+		}
+		if !ok {
+			return c, fmt.Errorf("%s %s is only for the %s", c.Name, c.Version, strings.Join(names, " and "))
+		}
+	}
+	return c.ForArch(arch)
 }
 
 // ForArch returns the plugin with the zip that fits a device whose `uname -m` is arch: the armv7 zip on Gen1 and Force, the aarch64
 // zip on Gen2 (an error when the version has none, so a Gen2 device never gets a library it cannot load).
 func (c CatPlugin) ForArch(arch string) (CatPlugin, error) {
 	if arch != "aarch64" {
+		if c.Gen2Only {
+			return c, fmt.Errorf("%s %s is only built for 64-bit MPCs (aarch64): there is no build for this one", c.Name, c.Version)
+		}
 		return c, nil
 	}
-	if c.Kind == "addin" || c.Aarch64 == nil {
+	if c.Aarch64 == nil {
 		return c, fmt.Errorf("%s %s has no Gen2 (aarch64) build yet", c.Name, c.Version)
 	}
 	c.Size, c.SHA256, c.URL = c.Aarch64.Size, c.Aarch64.SHA256, c.Aarch64.URL
@@ -66,28 +99,34 @@ func (c CatPlugin) ForArch(arch string) (CatPlugin, error) {
 type rawCatalog struct {
 	Schema  int `json:"schema"`
 	Plugins []struct {
-		ID           string `json:"id"`
-		Name         string `json:"name"`
-		Author       string `json:"author"`
-		Kind         string `json:"kind"`
-		Role         string `json:"role"`
-		Summary      string `json:"summary"`
-		Distribution string `json:"distribution"`
-		Screenshot   string `json:"screenshot"`
-		Latest       string `json:"latest"`
+		ID           string   `json:"id"`
+		Name         string   `json:"name"`
+		Author       string   `json:"author"`
+		Kind         string   `json:"kind"`
+		Role         string   `json:"role"`
+		Summary      string   `json:"summary"`
+		Distribution string   `json:"distribution"`
+		Screenshot   string   `json:"screenshot"`
+		Latest       string   `json:"latest"`
+		Devices      []string `json:"devices"`
+		VerifiedOn   []string `json:"verified_on"`
 		Versions     []struct {
-			Version     string           `json:"version"`
-			Size        int64            `json:"size"`
-			SHA256      string           `json:"sha256"`
-			URL         string           `json:"url"`
-			Channel     string           `json:"channel"`
-			Yanked      bool             `json:"yanked"`
-			Defer       *bool            `json:"defer"`
-			OSCompat    []string         `json:"os_compat"`
-			OSWhy       []string         `json:"os_compat_why"`
-			MaxGlibc    string           `json:"max_glibc"`
-			Assets      map[string]Asset `json:"assets"`
-			ParamCompat int              `json:"param_compat"`
+			Version  string           `json:"version"`
+			Size     int64            `json:"size"`
+			SHA256   string           `json:"sha256"`
+			URL      string           `json:"url"`
+			Channel  string           `json:"channel"`
+			Yanked   bool             `json:"yanked"`
+			Defer    *bool            `json:"defer"`
+			OSCompat []string         `json:"os_compat"`
+			OSWhy    []string         `json:"os_compat_why"`
+			MaxGlibc string           `json:"max_glibc"`
+			Assets   map[string]Asset `json:"assets"`
+			Gen2Only bool             `json:"gen2_only"`
+			VST2     *struct {
+				Folder string `json:"folder"`
+			} `json:"vst2"`
+			ParamCompat int `json:"param_compat"`
 			Manifest    struct {
 				Skin     string   `json:"skin"`
 				UID      string   `json:"uid"`
@@ -129,9 +168,18 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 			if isHTTPS(p.Screenshot) {
 				shot = p.Screenshot
 			}
+			vf := ""
+			if v.VST2 != nil {
+				vf = v.VST2.Folder
+			}
+			ver := p.VerifiedOn
+			if ver == nil {
+				ver = []string{}
+			}
 			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version, Screenshot: shot,
 				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, Defer: v.Defer,
-				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64})
+				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64, Gen2Only: v.Gen2Only,
+				Devices: p.Devices, VerifiedOn: ver, VST2Folder: vf})
 			break
 		}
 	}
@@ -147,6 +195,18 @@ func isHTTPS(u string) bool {
 var httpClient = &http.Client{Timeout: 20 * time.Minute}
 
 func FetchCatalog(u string) ([]CatPlugin, error) {
+	c, err := fetchCatalog(u)
+	if err != nil {
+		if old, ok := fallbackCatalogURLs[u]; ok {
+			if c2, err2 := fetchCatalog(old); err2 == nil {
+				return c2, nil
+			}
+		}
+	}
+	return c, err
+}
+
+func fetchCatalog(u string) ([]CatPlugin, error) {
 	resp, err := http.Get(u) //nolint:gosec // the catalog address is the app's own setting
 	if err != nil {
 		return nil, err

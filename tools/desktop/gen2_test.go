@@ -61,8 +61,12 @@ func TestForArchPicksTheZipForTheDevice(t *testing.T) {
 	if c, err := by["gen1"].ForArch("armv7l"); err != nil || c.URL != "https://example.com/g1.zip" {
 		t.Errorf("Gen1-only on Gen1: %+v %v", c, err)
 	}
-	if _, err := (CatPlugin{Kind: "addin", Name: "A", Aarch64: &Asset{}}).ForArch("aarch64"); err == nil {
-		t.Error("addins are armv7 only")
+	// addins now ship aarch64 builds too (the MPC Sample's are aarch64 only)
+	if c, err := (CatPlugin{Kind: "addin", Name: "A", Aarch64: &Asset{URL: "https://example.com/a64.zip"}}).ForArch("aarch64"); err != nil || c.URL != "https://example.com/a64.zip" {
+		t.Errorf("an addin with an aarch64 build on a Gen2 device: %+v %v", c, err)
+	}
+	if _, err := (CatPlugin{Name: "S", Gen2Only: true}).ForArch("armv7l"); err == nil || !strings.Contains(err.Error(), "64-bit") {
+		t.Errorf("a version with no armv7 build must be refused on a 32-bit MPC: %v", err)
 	}
 }
 

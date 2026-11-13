@@ -39,7 +39,7 @@ func RunNativeInstall(dev *Device, drive VDrive, items []Item, workDir string, j
 			pkgs = append(pkgs, it.Pkg)
 			continue
 		}
-		c, err := it.Catalog.ForArch(dev.Info.Arch)
+		c, err := it.Catalog.ForDevice(dev.Info.Arch, dev.Info.Device)
 		if err != nil {
 			return err
 		}
