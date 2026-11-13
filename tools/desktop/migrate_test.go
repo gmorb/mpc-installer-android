@@ -141,3 +141,52 @@ func TestServerMoveThenDeleteOldCopy(t *testing.T) {
 		t.Errorf("the moved copy keeps the user's files: %v", err)
 	}
 }
+
+// Deleting an old plugin without moving it: folder and old-list entry go, nothing appears in VST2 Plugins, other plugins stay.
+func TestServerDeleteOldPluginWithoutMoving(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	h := newHarness(t)
+	fd, cfg, usb, _ := nativeDevice(t)
+	h.fd, h.app.cfg = fd, cfg
+	internal := cfg.SynthsDir
+	gone := oldPlugin(t, fd, internal, "Gone", "476f6e65", 0x28)
+	keep := oldPlugin(t, fd, internal, "Keep", "4b656570", 0x28)
+	settings := writeSettings(fd, []string{internal}, entry("Gone", gone+"/lib/gone.so", "476f6e65"), entry("Keep", keep+"/lib/keep.so", "4b656570"))
+	if code, m := h.post("/api/connect", map[string]any{"host": "127.0.0.1", "password": "secret"}); code != 200 {
+		t.Fatal(m)
+	}
+	if code, _ := h.post("/api/migrate/delete", map[string]any{"items": []map[string]string{{"root": internal, "folder": "me - VST - Gone"}}}); code != 400 {
+		t.Fatal("deleting must be confirmed")
+	}
+	if code, _ := h.post("/api/migrate/delete", map[string]any{"items": []map[string]string{{"root": "/etc", "folder": "passwd"}}, "confirm": true}); code != 400 {
+		t.Fatal("only folders the scan found")
+	}
+	if code, m := h.post("/api/migrate/delete", map[string]any{"items": []map[string]string{{"root": internal, "folder": "me - VST - Gone"}}, "confirm": true}); code != 200 {
+		t.Fatal(m)
+	}
+	var job map[string]any
+	for i := 0; i < 200; i++ {
+		_, b := h.do("GET", "/api/job?since=0", nil, nil)
+		jsonUnmarshal(b, &job)
+		if job["state"] != "running" {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if job["state"] != "done" {
+		t.Fatalf("delete: %v", job)
+	}
+	if _, err := os.Stat(gone); err == nil {
+		t.Error("the plugin must be gone, own files included")
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Error("the other plugin stays")
+	}
+	s, _ := os.ReadFile(settings)
+	if strings.Contains(string(s), `uid="476f6e65"`) || !strings.Contains(string(s), `uid="4b656570"`) {
+		t.Errorf("only its entry leaves MPC's old plugin list:\n%s", s)
+	}
+	if _, err := os.Stat(filepath.Join(usb, VST2Dir, "me - VST - Gone")); err == nil {
+		t.Error("deleting does not move")
+	}
+}

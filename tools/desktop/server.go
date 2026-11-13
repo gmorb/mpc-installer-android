@@ -66,6 +66,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/remember", a.remember)
 	mux.HandleFunc("/api/migrate", a.migrate)
 	mux.HandleFunc("/api/migrate/cleanup", a.migrateCleanup)
+	mux.HandleFunc("/api/migrate/delete", a.migrateDelete)
 	mux.HandleFunc("/api/unregistered", a.unregistered)
 	mux.HandleFunc("/api/register", a.register)
 	mux.HandleFunc("/api/backups", a.backups)
@@ -221,6 +222,13 @@ func (a *App) catalog(w http.ResponseWriter, r *http.Request) {
 		for _, vp := range a.dev.Info.VPlugins {
 			if _, ok := vwhere[vp.Folder]; !ok {
 				vwhere[vp.Folder] = vp
+			}
+			for _, c := range a.cat { // the catalog names a version's VST2 Plugins folder
+				if c.VST2Folder != "" && c.VST2Folder == vp.Folder {
+					if _, ok := vwhere[c.Skin]; !ok {
+						vwhere[c.Skin] = vp
+					}
+				}
 			}
 			if vp.Name != "" { // a converted plugin's folder is named after what the plugin reports, which can differ from the package's
 				for _, c := range a.cat {
@@ -1239,6 +1247,69 @@ func (a *App) migrateCleanup(w http.ResponseWriter, r *http.Request) {
 		for _, p := range plans {
 			delete(a.moved, p.Root+"\x00"+p.Folder)
 		}
+		if a.dev == dev {
+			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+		}
+	})
+	writeJSON(w, 200, map[string]string{"job": j.ID})
+}
+
+// migrateDelete deletes old Synths plugins without moving them first (the person does not want them in VST2 Plugins): folder and
+// entry in MPC's old plugin list, everything in the folder included. Only plugin folders the last scan found, never addins.
+func (a *App) migrateDelete(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct {
+		Items   []folderRef `json:"items"`
+		Confirm bool        `json:"confirm"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	if !in.Confirm {
+		fail(w, 400, "deleting must be confirmed")
+		return
+	}
+	a.ensureCat()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev == nil {
+		fail(w, 400, "connect to the device first")
+		return
+	}
+	if a.job != nil {
+		if st, _, _, _ := a.job.snapshot(0); st == "running" {
+			fail(w, 409, "a job is already running")
+			return
+		}
+	}
+	byKey := map[string]knownPlugin{}
+	for _, kp := range a.classify() {
+		if !kp.Addin {
+			byKey[kp.Root+"\x00"+kp.Folder] = kp
+		}
+	}
+	var plans []RemovePlan
+	for _, it := range in.Items {
+		kp, ok := byKey[it.Root+"\x00"+it.Folder]
+		if !ok {
+			fail(w, 400, fmt.Sprintf("%q is not a plugin folder in a Synths folder on the device", it.Folder))
+			return
+		}
+		plans = append(plans, RemovePlan{Root: kp.Root, Folder: kp.Folder, UID: kp.UID, ID: kp.ID})
+	}
+	if len(plans) == 0 {
+		fail(w, 400, "nothing selected")
+		return
+	}
+	j := &Job{ID: randHex(4), State: "running"}
+	a.job = j
+	dev := a.dev
+	go RunMigrateCleanup(dev, plans, j, func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
 		if a.dev == dev {
 			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
 		}
