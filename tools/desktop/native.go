@@ -505,16 +505,10 @@ func (p *Package) NativeFolders(devArch string) ([]NFolder, error) {
 		if meta.Shell {
 			return nil, fmt.Errorf("%s is a shell plugin (several plugins in one binary), which MPC's %s folder does not support", m.Name, VST2Dir)
 		}
-		uid, err := convertUID(meta.UID)
-		if err != nil {
+		if _, err := convertUID(meta.UID); err != nil {
 			return nil, fmt.Errorf("%s: %w", m.Name, err)
 		}
-		// file="%payload-path%/<folder>/<binary path>": the binary's path inside the plugin folder is what follows the folder name
-		file := strings.ReplaceAll(meta.File, `\`, "/")
-		rel := path.Base(file)
-		if i := strings.Index(file, "/"+m.Skin+"/"); i >= 0 {
-			rel = file[i+len(m.Skin)+2:]
-		}
+		rel := binaryRel(meta.File, m.Skin)
 		if names[dir+"/"+rel] == nil && m.So != "" {
 			rel = m.So
 		}
@@ -547,39 +541,10 @@ func (p *Package) NativeFolders(devArch string) ([]NFolder, error) {
 		if version == "" {
 			version = "1.0.0"
 		}
-		kind, category := "effect", meta.Category
-		if meta.Instrument {
-			kind = "instrument"
+		pj, err := pluginJSONFor(meta, version, m.About, key, rel)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", m.Name, err)
 		}
-		if category == "" {
-			category = map[string]string{"instrument": "Synth", "effect": "Effect"}[kind]
-		}
-		// key order as the SDK writes it
-		var pj bytes.Buffer
-		w := func(k string, v any, last bool) {
-			b, _ := json.Marshal(v)
-			fmt.Fprintf(&pj, "  %q: %s", k, b)
-			if !last {
-				pj.WriteString(",")
-			}
-			pj.WriteString("\n")
-		}
-		pj.WriteString("{\n")
-		w("name", meta.Name, false)
-		w("manufacturer", meta.Manufacturer, false)
-		w("version", version, false)
-		w("format", "vst2", false)
-		w("kind", kind, false)
-		w("uid", uid, false)
-		w("category", category, false)
-		w("numInputs", meta.Inputs, false)
-		w("numOutputs", meta.Outputs, false)
-		w(key, rel, false)
-		if m.About != "" {
-			w("description", m.About, false)
-		}
-		w("convertedFrom", "community mpc-vst-plugins package (MPC Installer)", true)
-		pj.WriteString("}\n")
 		f := NFolder{Name: folder, ZipPath: p.Path, Title: meta.Name, Version: version, Links: links}
 		hasVersionXML := false
 		for _, e := range ents {
@@ -591,10 +556,9 @@ func (p *Package) NativeFolders(devArch string) ([]NFolder, error) {
 			}
 			f.Entries = append(f.Entries, e)
 		}
-		f.Entries = append(f.Entries, NEntry{Rel: "plugin.json", Data: pj.Bytes(), Mode: 0o644})
+		f.Entries = append(f.Entries, NEntry{Rel: "plugin.json", Data: pj, Mode: 0o644})
 		if !hasVersionXML {
-			vx := "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<plugincontent version=\"1.0\">\n    <version>" + padVersion(version) + "</version>\n</plugincontent>\n"
-			f.Entries = append(f.Entries, NEntry{Rel: "version.xml", Data: []byte(vx), Mode: 0o644})
+			f.Entries = append(f.Entries, NEntry{Rel: "version.xml", Data: versionXML(version), Mode: 0o644})
 		}
 		if m.Skin != folder {
 			f.Notes = append(f.Notes, fmt.Sprintf("the package folder was named %q; the plugin reports %q, so that is the folder's name now", m.Skin, folder))
@@ -605,4 +569,60 @@ func (p *Package) NativeFolders(devArch string) ([]NFolder, error) {
 		out = append(out, f)
 	}
 	return out, nil
+}
+
+// pluginJSONFor writes the plugin.json for a converted plugin, keys in the order the SDK writes them. key is "file32" or "file64",
+// rel the library's path inside the folder.
+func pluginJSONFor(meta legacyMeta, version, about, key, rel string) ([]byte, error) {
+	uid, err := convertUID(meta.UID)
+	if err != nil {
+		return nil, err
+	}
+	kind, category := "effect", meta.Category
+	if meta.Instrument {
+		kind = "instrument"
+	}
+	if category == "" {
+		category = map[string]string{"instrument": "Synth", "effect": "Effect"}[kind]
+	}
+	var pj bytes.Buffer
+	w := func(k string, v any, last bool) {
+		b, _ := json.Marshal(v)
+		fmt.Fprintf(&pj, "  %q: %s", k, b)
+		if !last {
+			pj.WriteString(",")
+		}
+		pj.WriteString("\n")
+	}
+	pj.WriteString("{\n")
+	w("name", meta.Name, false)
+	w("manufacturer", meta.Manufacturer, false)
+	w("version", version, false)
+	w("format", "vst2", false)
+	w("kind", kind, false)
+	w("uid", uid, false)
+	w("category", category, false)
+	w("numInputs", meta.Inputs, false)
+	w("numOutputs", meta.Outputs, false)
+	w(key, rel, false)
+	if about != "" {
+		w("description", about, false)
+	}
+	w("convertedFrom", "community mpc-vst-plugins package (MPC Installer)", true)
+	pj.WriteString("}\n")
+	return pj.Bytes(), nil
+}
+
+func versionXML(version string) []byte {
+	return []byte("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<plugincontent version=\"1.0\">\n    <version>" + padVersion(version) + "</version>\n</plugincontent>\n")
+}
+
+// binaryRel finds the library's path inside a legacy plugin folder from plugin-meta.xml's file attribute
+// ("%payload-path%/<folder>/<path>"): what follows the folder name, or else the file name alone.
+func binaryRel(file, folder string) string {
+	file = strings.ReplaceAll(file, `\`, "/")
+	if i := strings.Index(file, "/"+folder+"/"); i >= 0 {
+		return file[i+len(folder)+2:]
+	}
+	return path.Base(file)
 }

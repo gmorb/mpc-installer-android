@@ -370,6 +370,17 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 <div class="toolbox">
 <h2>Device tools</h2>
 <div class="group">
+<section id="s7" class="off" hidden>
+<details id="d7" class="collapse">
+  <summary><h2>Move old plugins to VST2 Plugins</h2><span class="badge" id="mvbadge" hidden></span><span class="hint">Show</span></summary>
+  <p class="sub">These plugins are still in a Synths folder, installed the old way. MPC OS 3.10.1 loads plugins from VST2 Plugins folders instead. Moving converts each one on the MPC and copies it, with your own files in it, to <b id="mvto">a VST2 Plugins folder</b>. Every file is checked against the original, MPC keeps running, and the old copy stays until you choose to delete it.</p>
+  <ul class="list scroll" id="mvlist"></ul>
+  <button id="mv" disabled>Move to VST2 Plugins…</button>
+  <p class="msg" id="mvres" role="status" aria-live="polite"></p>
+  <pre class="log" id="mvlog" hidden></pre>
+</details>
+</section>
+
 <section id="s4" class="off">
 <details id="d4" class="collapse">
   <summary><h2>Remove plugins</h2><span class="hint">Show</span></summary>
@@ -420,7 +431,7 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 "use strict";
 var T = new URLSearchParams(location.search).get("t") || "";
 try { history.replaceState(null, "", location.pathname); } catch (e) {}
-var S = { connected: false, problems: [], nprob: [], method: "synths", vdrives: [], vdrive: "", vdev: [], native: false, cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
+var S = { pickMv: {}, connected: false, problems: [], nprob: [], method: "synths", vdrives: [], vdrive: "", vdev: [], native: false, cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
 function $(id) { return document.getElementById(id); }
 function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
@@ -444,6 +455,8 @@ function drawDevSum(info, n, places) {
     var vf = (info.vdrives || []).filter(function (d) { return d.hasFolder; }).map(function (d) { return d.label; });
     row("Plugins", (info.vplugins || []).length + " in VST2 Plugins folders");
     row("VST2 Plugins on", vf.length ? vf.join(", ") : "no drive yet (create the folder in step 3)");
+    var olds = (info.installed || []).length;
+    if (olds) row("Old Synths plugins", olds + " still installed the old way: move them under Device tools");
   } else {
     row("Plugin folders", n + " found");
     row("Locations", places || info.synths || "none yet");
@@ -479,6 +492,7 @@ function drawMethod() {
   Array.prototype.forEach.call(document.querySelectorAll('input[name=method]'), function (r) { r.checked = r.value === S.method; });
   $("where").hidden = v || !S.connected; $("regboxl").hidden = v; $("vwhere").hidden = !v || !S.connected; $("restartl").hidden = !v;
   $("s5").hidden = v; $("s6").hidden = v;   // registering and MPC.settings backups belong to the Synths method
+  drawMove();
   text($("rmsub"), v ? "The plugins in the VST2 Plugins folders on your MPC. Removing one deletes its whole folder, including any samples or other files it came with. MPC keeps running."
     : "The plugins on your MPC. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.");
   if (v) drawVWhere();
@@ -496,7 +510,7 @@ function defaultVDrive() {
 }
 function vOption(d, box, disabled) {
   var lab = el("label", "whereopt"), rb = document.createElement("input"); rb.type = "radio"; rb.name = "vwhere"; rb.value = d.path; rb.checked = d.path === S.vdrive; rb.disabled = !!disabled;
-  rb.addEventListener("change", function () { S.vdrive = d.path; drawVWarn(); refresh(); });
+  rb.addEventListener("change", function () { S.vdrive = d.path; drawVWarn(); drawMove(); refresh(); });
   var sp = el("span"); sp.appendChild(el("b", null, d.label)); sp.appendChild(el("small", null, d.path + "/VST2 Plugins · " + (d.fs ? d.fs + " · " : "") + gb(d.freeKB) + " free"));
   lab.appendChild(rb); lab.appendChild(sp); box.appendChild(lab);
 }
@@ -536,7 +550,7 @@ function makeVST2(d, b) {
   b.disabled = true; msg($("vdrivemsg"), "Creating " + d.path + "/VST2 Plugins…");
   api("/api/mkvst2", { drive: d.path }).then(function (j) {
     S.vdrives = j.device.vdrives || []; S.vdrive = d.path; S.nprob = j.nativeProblems || S.nprob;
-    drawVWhere(); msg($("vdrivemsg"), "Created " + d.path + "/VST2 Plugins.", "ok"); refresh();
+    drawVWhere(); drawMove(); msg($("vdrivemsg"), "Created " + d.path + "/VST2 Plugins.", "ok"); refresh();
   }).catch(function (e) { b.disabled = false; msg($("vdrivemsg"), e.message, "err"); });
 }
 $("vintack").addEventListener("change", function () {
@@ -754,8 +768,33 @@ function drawUnreg() {
   $("regbadge").hidden = !n; text($("regbadge"), n + " waiting");
 }
 function loadDevice() {
-  return api("/api/device").then(function (j) { S.dev = j.plugins; S.vdev = j.vplugins || []; if (j.roots) { S.roots = j.roots; } drawDev(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); msg($("rmresult"), e.message, "err"); });
+  return api("/api/device").then(function (j) { S.dev = j.plugins; S.vdev = j.vplugins || []; if (j.roots) { S.roots = j.roots; } drawDev(); drawMove(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); msg($("rmresult"), e.message, "err"); });
 }
+/* Plugins still in a Synths folder on an MPC that now loads VST2 Plugins folders: offered for moving (converted on the MPC). */
+function oldPlugins() { return S.connected && S.method === "vst2" ? S.dev.filter(function (p) { return !p.addin; }) : []; }
+function mvKey(p) { return p.root + "\u0000" + p.folder; }
+function movedAlready(p) { var n = (p.name || "").toLowerCase(); return S.vdev.some(function (v) { return (v.name || "").toLowerCase() === n || v.folder === p.folder; }); }
+function drawMove() {
+  var list = oldPlugins(), ul = $("mvlist"); ul.textContent = "";
+  $("s7").hidden = !list.length && !($("mvres").textContent && S.connected);   // stays while it shows how the last move went
+  $("s7").classList.toggle("off", !S.connected);
+  if (!list.length && S.connected) ul.appendChild(el("li", "small", "Nothing left in the Synths folders."));
+  var waiting = list.filter(function (p) { return !movedAlready(p); }).length;
+  $("mvbadge").hidden = !waiting; text($("mvbadge"), waiting + " to move");
+  var d = S.vdrives.filter(function (x) { return x.path === S.vdrive; })[0];
+  text($("mvto"), d ? d.label + " (" + d.path + "/VST2 Plugins)" : "a VST2 Plugins folder: choose or create one under Install to in step 3 first");
+  list.forEach(function (p, i) {
+    var key = mvKey(p), li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "mv_" + i; cb.checked = !!S.pickMv[key];
+    cb.addEventListener("change", function () { S.pickMv[key] = cb.checked; refresh(); });
+    var t = el("div", "t"), b = el("b", null, p.name || p.folder);
+    if (movedAlready(p)) b.appendChild(el("span", "tag ok", "already in VST2 Plugins"));
+    t.appendChild(b); t.appendChild(el("span", "d", p.folder + " · in " + (p.rootLabel || p.root)));
+    var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
+    li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
+  });
+  if ($("d7").open) fitList(ul, 3);
+}
+function chosenMv() { return oldPlugins().filter(function (p) { return S.pickMv[mvKey(p)]; }); }
 function devKey(p) { return (p.native ? "v" : "") + p.root + "\u0000" + p.folder; }
 function devItems() {   // what Remove plugins lists: the VST2 Plugins folders' plugins, or the Synths folders'
   if (S.method !== "vst2") return S.dev;
@@ -834,6 +873,7 @@ function refresh() {
   $("go2").disabled = $("go").disabled;
   Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
   var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
+  $("mv").disabled = !S.connected || S.running || S.nprob.length > 0 || !S.vdrive || !chosenMv().length;
   $("rm").disabled = !S.connected || S.running || probs().length > 0 || !devItems().some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
   $("s1").dataset.state = S.connected ? "done" : "current";
@@ -932,6 +972,24 @@ $("rm").addEventListener("click", function () {
     (!plugs.length ? "" : ch.some(function (p) { return p.keep.length; }) ? " Your own files are kept: " + ch.filter(function (p) { return p.keep.length; }).map(function (p) { return (p.name || p.folder) + " (" + p.keep.join(", ") + ")"; }).join("; ") + "." : " Nothing inside is kept.") + " MPC restarts once.");
   $("dlg").showModal();
 });
+$("mv").addEventListener("click", function () {
+  var ch = chosenMv(), d = S.vdrives.filter(function (x) { return x.path === S.vdrive; })[0];
+  S.mode = "move"; $("dlgsave").hidden = true; text($("dlgtitle"), "Move to VST2 Plugins?"); text($("yes"), "Move");
+  text($("dlgtxt"), "About to convert and copy " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + " to " + (d ? d.label : S.vdrive) + " (VST2 Plugins). MPC keeps running and the old copies stay where they are; you can delete them afterwards.");
+  $("dlg").showModal();
+});
+$("d7").addEventListener("toggle", function () { if ($("d7").open) fitList($("mvlist"), 3); });
+// After a move: offer to delete the old copies of the ones that made it
+function offerCleanup(j) {
+  var moved = (j.ok || []).filter(function (k) { return k.indexOf("move:") === 0; }).map(function (k) { var r = k.slice(5).split("\t"); return { root: r[0], folder: r[1] }; });
+  if (!moved.length) return;
+  S.cleanup = moved; S.mode = "cleanup"; $("dlgsave").hidden = !S.problems.length ? false : true;
+  text($("dlgtitle"), "Delete the old copies?"); text($("yes"), "Delete old copies"); text($("no"), "Keep them");
+  text($("dlgtxt"), moved.length + " plugin" + (moved.length === 1 ? " is" : "s are") + " now in VST2 Plugins: " + moved.map(function (m) { return m.folder; }).join(", ") + ". Delete " + (moved.length === 1 ? "its old copy" : "their old copies") + " from the Synths folder? " +
+    (!S.problems.length ? "Their entries in MPC's old plugin list go too (MPC's settings are backed up first) and MPC restarts once. " : "The old folders are deleted. ") + "The copies in VST2 Plugins have every file, your own included. If you keep them, MPC may list the plugin twice.");
+  $("dlg").showModal();
+}
+$("dlg").addEventListener("close", function () { text($("no"), "Cancel"); });
 $("prune").addEventListener("click", function () {
   var kn = keepN(), del = S.bk ? S.bk.count - kn : 0; S.mode = "prune"; $("dlgsave").hidden = true;
   text($("dlgtitle"), "Delete old settings backups?"); text($("yes"), "Delete");
@@ -952,6 +1010,21 @@ $("yes").addEventListener("click", function () {
     msg($("pruneres"), "Working…"); $("prune").disabled = true;
     api("/api/prune", { keep: keepN(), confirm: true }).then(function (j) { msg($("pruneres"), "Deleted " + j.deleted + " old backup" + (j.deleted === 1 ? "" : "s") + ".", "ok"); S.bk = j.backups; drawBk(); refresh(); })
       .catch(function (e) { msg($("pruneres"), e.message, "err"); refresh(); });
+    return;
+  }
+  if (S.mode === "move") {
+    var mitems = chosenMv().map(function (p) { return { root: p.root, folder: p.folder }; });
+    S.running = true; refresh(); msg($("mvres"), "Working…"); var ml = $("mvlog"); ml.hidden = false; ml.textContent = "";
+    api("/api/migrate", { items: mitems, drive: S.vdrive, confirm: true }).then(function () {
+      poll(0, $("mvlog"), $("mvres"), "Done. On the MPC, the moved plugins are under External Plugins.", function (j) { S.pickMv = {}; offerCleanup(j); });
+    }).catch(function (e) { S.running = false; refresh(); msg($("mvres"), e.message, "err"); });
+    return;
+  }
+  if (S.mode === "cleanup") {
+    S.running = true; refresh(); msg($("mvres"), "Deleting the old copies…"); var cl = $("mvlog"); cl.hidden = false; cl.textContent = "";
+    api("/api/migrate/cleanup", { items: S.cleanup, confirm: true }).then(function () {
+      poll(0, $("mvlog"), $("mvres"), "Done. The old copies are deleted" + (!S.problems.length ? " and MPC is starting again." : "."));
+    }).catch(function (e) { S.running = false; refresh(); msg($("mvres"), e.message, "err"); });
     return;
   }
   if (S.mode === "register") {
@@ -976,10 +1049,11 @@ function scrollToProgress() {
   var t = $("result"); if (!t) return;
   setTimeout(function () { try { t.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { t.scrollIntoView(); } }, 50);
 }
-function poll(since, log, resultEl, doneText) {
+function poll(since, log, resultEl, doneText, after) {
   api("/api/job?since=" + since).then(function (j) {
     if (j.lines && j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
-    if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
+    if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText, after); }, 600); return; }
+    if (after) setTimeout(function () { after(j); }, 300);
     S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
     if (S.after && S.after.pending) { S.after.pending = false; S.after.done = j.state === "done"; S.after.ok = j.ok || null; }
     api("/api/state").then(function (st) {
@@ -988,7 +1062,7 @@ function poll(since, log, resultEl, doneText) {
       refresh();
     });
     refresh();
-  }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });
+  }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText, after); }, 1500); });
 }
 
 // Preferences: in the Android app they live in the app (MPCApp), since the page's address, and with it the browser's storage,

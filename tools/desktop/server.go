@@ -34,6 +34,7 @@ type App struct {
 	cat     []CatPlugin
 	catAt   time.Time
 	job     *Job
+	moved   map[string]DevPlugin // old Synths folders the last move put into VST2 Plugins: only these may be deleted by the cleanup
 
 	patches   []Patch
 	patchesAt time.Time
@@ -63,6 +64,8 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/mkroot", a.mkroot)
 	mux.HandleFunc("/api/mkvst2", a.mkvst2)
 	mux.HandleFunc("/api/remember", a.remember)
+	mux.HandleFunc("/api/migrate", a.migrate)
+	mux.HandleFunc("/api/migrate/cleanup", a.migrateCleanup)
 	mux.HandleFunc("/api/unregistered", a.unregistered)
 	mux.HandleFunc("/api/register", a.register)
 	mux.HandleFunc("/api/backups", a.backups)
@@ -1086,6 +1089,156 @@ func (a *App) patchRun(w http.ResponseWriter, r *http.Request) {
 	go RunPatch(dev, patch, script, in.Action, j, func() {
 		a.mu.Lock()
 		defer a.mu.Unlock()
+		if a.dev == dev {
+			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+		}
+	})
+	writeJSON(w, 200, map[string]string{"job": j.ID})
+}
+
+type folderRef struct {
+	Root   string `json:"root"`
+	Folder string `json:"folder"`
+}
+
+// migrate moves plugins from Synths folders into a drive's VST2 Plugins folder (RunMigrate), for MPC OS 3.10.1+.
+func (a *App) migrate(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct {
+		Items   []folderRef `json:"items"`
+		Drive   string      `json:"drive"`
+		Confirm bool        `json:"confirm"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	if !in.Confirm {
+		fail(w, 400, "moving must be confirmed")
+		return
+	}
+	a.ensureCat()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev == nil {
+		fail(w, 400, "connect to the device first")
+		return
+	}
+	if a.job != nil {
+		if st, _, _, _ := a.job.snapshot(0); st == "running" {
+			fail(w, 409, "a job is already running")
+			return
+		}
+	}
+	drive, ok := a.dev.Info.vdrive(in.Drive)
+	if !ok || !drive.HasFolder {
+		fail(w, 400, "choose a drive with a "+VST2Dir+" folder first (step 3, Install to)")
+		return
+	}
+	byKey := map[string]knownPlugin{}
+	for _, kp := range a.classify() {
+		if !kp.Addin {
+			byKey[kp.Root+"\x00"+kp.Folder] = kp
+		}
+	}
+	var items []MoveItem
+	seen := map[string]bool{}
+	for _, it := range in.Items { // only folders the last scan found in a Synths folder
+		k := it.Root + "\x00" + it.Folder
+		kp, ok := byKey[k]
+		if !ok {
+			fail(w, 400, fmt.Sprintf("%q is not a plugin folder in a Synths folder on the device", it.Folder))
+			return
+		}
+		if !seen[k] {
+			seen[k] = true
+			items = append(items, MoveItem{DevPlugin: kp.DevPlugin, Version: kp.Version})
+		}
+	}
+	if len(items) == 0 {
+		fail(w, 400, "nothing selected")
+		return
+	}
+	j := &Job{ID: randHex(4), State: "running"}
+	a.job = j
+	dev := a.dev
+	a.moved = map[string]DevPlugin{}
+	go RunMigrate(dev, drive, items, j, func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		for _, k := range j.okList() {
+			for _, it := range items {
+				if moveKey(it.Root, it.Folder) == k {
+					a.moved[it.Root+"\x00"+it.Folder] = it.DevPlugin
+				}
+			}
+		}
+		if a.dev == dev {
+			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+		}
+	})
+	writeJSON(w, 200, map[string]string{"job": j.ID})
+}
+
+// migrateCleanup deletes old Synths copies of plugins the last move put into VST2 Plugins (RunMigrateCleanup); nothing else.
+func (a *App) migrateCleanup(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct {
+		Items   []folderRef `json:"items"`
+		Confirm bool        `json:"confirm"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	if !in.Confirm {
+		fail(w, 400, "deleting must be confirmed")
+		return
+	}
+	a.ensureCat()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev == nil {
+		fail(w, 400, "connect to the device first")
+		return
+	}
+	if a.job != nil {
+		if st, _, _, _ := a.job.snapshot(0); st == "running" {
+			fail(w, 409, "a job is already running")
+			return
+		}
+	}
+	ids := map[string]string{}
+	for _, kp := range a.classify() {
+		ids[kp.Root+"\x00"+kp.Folder] = kp.ID
+	}
+	var plans []RemovePlan
+	for _, it := range in.Items {
+		k := it.Root + "\x00" + it.Folder
+		dp, ok := a.moved[k]
+		if !ok {
+			fail(w, 400, fmt.Sprintf("%s was not moved to %s in this session, so its old copy is not deleted from here", it.Folder, VST2Dir))
+			return
+		}
+		plans = append(plans, RemovePlan{Root: dp.Root, Folder: dp.Folder, UID: dp.UID, ID: ids[k]})
+	}
+	if len(plans) == 0 {
+		fail(w, 400, "nothing selected")
+		return
+	}
+	j := &Job{ID: randHex(4), State: "running"}
+	a.job = j
+	dev := a.dev
+	go RunMigrateCleanup(dev, plans, j, func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		for _, p := range plans {
+			delete(a.moved, p.Root+"\x00"+p.Folder)
+		}
 		if a.dev == dev {
 			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
 		}

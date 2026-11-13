@@ -21,7 +21,12 @@ func TestUIServe(t *testing.T) {
 		t.Skip("set MPC_UI_SERVE=<port> to serve the page against a simulated MPC")
 	}
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	_, cfg, _, _ := nativeDevice(t)
+	fd, cfg, _, _ := nativeDevice(t)
+	if os.Getenv("MPC_UI_OLD") != "" { // two plugins installed the old way, in the internal Synths folder
+		acid := oldPlugin(t, fd, cfg.SynthsDir, "Acid", "41634964", 0x28)
+		bass := oldPlugin(t, fd, cfg.SynthsDir, "Bass", "42617373", 0x28)
+		writeSettings(fd, []string{cfg.SynthsDir}, entry("Acid", acid+"/lib/acid.so", "41634964"), entry("Bass", bass+"/lib/bass.so", "42617373"))
+	}
 	zips := map[string][]byte{}
 	var cat []CatPlugin
 	for _, c := range []struct{ id, name, skin string }{{"acid", "Acid", "Acme - VST - Acid"}, {"wobble", "Wobble", "Acme - VST - Wobble"}} {
