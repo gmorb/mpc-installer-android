@@ -27,6 +27,11 @@ app connects it reads the running MPC's version (`/tmp/com.akaipro.mpc.version`)
 - Each folder is streamed as a tar into `<drive>/.mpc-installer-stage`, moved into `VST2 Plugins` (an older copy is replaced, and put back
   if the new one's file sizes do not match), and MPC keeps running. **Restart MPC afterwards** is optional.
 - Removing deletes the plugin's folder. Registering and MPC.settings backups are for the Synths method only.
+- Plugins already in a Synths folder on a 3.10.1+ MPC are offered under Device tools (**Move old plugins to VST2 Plugins**,
+  `tools/desktop/migrate.go`): each folder is converted on the device (`cp -a` into the staging folder, `plugin.json` and `version.xml`
+  written from its `plugin-meta.xml`, the library's ELF header read with `od`), compared file by file with the original and moved into
+  place. The page then asks whether to delete the old copies of those that moved; with MPC.settings present that is the usual removal
+  (entry and folder, one MPC restart), otherwise the folders are deleted. Only folders moved in this session can be deleted that way.
 
 Older, modded MPCs keep the Synths method; when both work, step 3 shows **Install method**.
 
