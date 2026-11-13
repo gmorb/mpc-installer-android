@@ -62,8 +62,14 @@ type Package struct {
 	Unpacked int64      `json:"unpacked"` // what it takes on the device
 	SHA256   string     `json:"sha256"`
 	Source   string     `json:"source"` // "catalog" or "upload"
-	Path     string     `json:"-"`
-	Top      string     `json:"-"`
+	// Native: already in MPC OS 3.10.1's format (made with inMusic's SDK): one or more "<Manufacturer> - VST - <Name>" folders with
+	// a plugin.json each, NativeDirs, and maybe an INSTALL.txt beside them. It goes into VST2 Plugins as it is (native.go).
+	Native     bool     `json:"native"`
+	NativeDirs []string `json:"-"`
+	BundleDirs []string `json:"-"` // a bundle's package folders, in the order of Plugins
+	Key        string   `json:"-"` // set by an install: "catalog:<id>" or "upload:<handle>"
+	Path       string   `json:"-"`
+	Top        string   `json:"-"`
 }
 
 // cleanName returns the entry name without a trailing slash, or an error for anything that could leave the package folder.
@@ -106,6 +112,26 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 	var total uint64
 	links := 0
 	names := map[string]*zip.File{}
+	tops := map[string]bool{}
+	for _, f := range zr.File {
+		if n, err := cleanName(f.Name); err == nil {
+			tops[strings.SplitN(n, "/", 2)[0]] = true
+			names[n] = f
+		}
+	}
+	var nativeDirs []string // folders with a plugin.json of the SDK's format at their top
+	for t := range tops {
+		if f, ok := names[t+"/plugin.json"]; ok {
+			if b, err := readZipFile(f, 1<<20); err == nil {
+				var pj pluginJSON
+				if json.Unmarshal(b, &pj) == nil && pj.Name != "" && (pj.Format != "" || pj.File != "" || pj.File32 != "" || pj.File64 != "") {
+					nativeDirs = append(nativeDirs, t)
+				}
+			}
+		}
+	}
+	sort.Strings(nativeDirs)
+	names = map[string]*zip.File{}
 	for _, f := range zr.File {
 		n, err := cleanName(f.Name)
 		if err != nil {
@@ -114,7 +140,7 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 		first := strings.SplitN(n, "/", 2)[0]
 		if top == "" {
 			top = first
-		} else if first != top {
+		} else if first != top && len(nativeDirs) == 0 {
 			return nil, errors.New("the zip must hold one folder (unzip it: you should see a single folder such as Name-1.0.0)")
 		}
 		total += f.UncompressedSize64
@@ -200,7 +226,30 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 		return string(b)
 	}
 	p := &Package{Path: zipPath, Top: top, Source: source, Size: st.Size(), Unpacked: int64(total), Symlinks: links}
-	if _, ok := names[top+"/mpc-plugin.json"]; ok {
+	if len(nativeDirs) > 0 { // made with inMusic's SDK for MPC OS 3.10.1: plugin folders, maybe an INSTALL.txt, nothing else
+		for t := range tops {
+			isDir := false
+			for _, d := range nativeDirs {
+				isDir = isDir || d == t
+			}
+			if !isDir && names[t] != nil && !names[t].FileInfo().IsDir() && regexp.MustCompile(`(?i)^(install|readme|licen[cs]e)[^/]*$`).MatchString(t) {
+				continue
+			}
+			if !isDir {
+				return nil, fmt.Errorf("%s is neither a plugin folder (with a plugin.json) nor an INSTALL.txt: this does not look like a plugin zip made with the MPC Plugin Builder SDK", t)
+			}
+		}
+		var titles []string
+		for _, d := range nativeDirs {
+			b, _ := readZipFile(names[d+"/plugin.json"], 1<<20)
+			var pj pluginJSON
+			json.Unmarshal(b, &pj)
+			titles = append(titles, pj.Name)
+			p.Version = pj.Version
+			p.Plugins = append(p.Plugins, Manifest{Name: pj.Name, Version: pj.Version, Skin: d})
+		}
+		p.Native, p.NativeDirs, p.Title, p.Top, p.Defer = true, nativeDirs, strings.Join(titles, " + "), "", true
+	} else if _, ok := names[top+"/mpc-plugin.json"]; ok {
 		m, err := readManifest(top)
 		if err != nil {
 			return nil, err
@@ -239,7 +288,7 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 			titles = append(titles, m.Name)
 			p.Version = m.Version
 		}
-		p.Bundle, p.Title = true, strings.Join(titles, " + ")
+		p.Bundle, p.Title, p.BundleDirs = true, strings.Join(titles, " + "), subs
 		p.Defer = strings.Contains(readAll(top+"/install.sh"), `"$@"`)
 		for _, s := range subs {
 			p.Defer = p.Defer && strings.Contains(readAll(s+"/install.sh"), "DEFER=")

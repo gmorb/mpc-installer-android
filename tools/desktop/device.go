@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,11 +29,15 @@ type Config struct {
 	MountsFile   string // the list of mounts, "/proc/mounts"
 	AddinsDir    string // where addins live, one folder each: "/data/mpc-addins"
 	LibcPaths    string // where to look for the device's libc, shell words (globs allowed), to read its glibc version
+	VSTDrives    string // drives that can hold a "VST2 Plugins" folder (MPC OS 3.10.1+), shell words: "/media/* /nvme"
+	VersionFile  string // the running MPC app writes its version here: "/tmp/com.akaipro.mpc.version"
+	ReleaseFiles string // the firmware version: "/etc/az0x-release /etc/az01-release"
 }
 
 func defaultConfig() Config {
 	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", RootGlobs: "/sdcard/Synths /media/*/Synths", DriveGlob: "/media/*", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings", AddinsDir: "/data/mpc-addins",
-		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so"}
+		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so",
+		VSTDrives: "/media/* /nvme", VersionFile: "/tmp/com.akaipro.mpc.version", ReleaseFiles: "/etc/az0x-release /etc/az01-release"}
 }
 
 type DeviceInfo struct {
@@ -45,11 +50,16 @@ type DeviceInfo struct {
 	TmpFreeKB   int64                        `json:"tmpFreeKB"`
 	Tar         bool                         `json:"tar"`
 	Systemctl   bool                         `json:"systemctl"`
-	Libc        string                       `json:"libc"`      // the device's glibc ("2.33"), empty when it cannot be told: MPC OS 2.x has about 2.32, 3.x and the Force 2.39
-	Roots       []Root                       `json:"roots"`     // the places plugins can live: the internal drive first, then cards and drives
-	Drives      []Drive                      `json:"drives"`    // drives under /media with no Synths folder yet
-	Installed   []string                     `json:"installed"` // names of the plugin folders found in any of them
-	Store       map[string]string            `json:"store"`     // plugin id -> version recorded by this app or mpc-store.sh, in the internal drive
+	Libc        string                       `json:"libc"`       // the device's glibc ("2.33"), empty when it cannot be told: MPC OS 2.x has about 2.32, 3.x and the Force 2.39
+	Roots       []Root                       `json:"roots"`      // the places plugins can live: the internal drive first, then cards and drives
+	Drives      []Drive                      `json:"drives"`     // drives under /media with no Synths folder yet
+	Installed   []string                     `json:"installed"`  // names of the plugin folders found in any of them
+	Store       map[string]string            `json:"store"`      // plugin id -> version recorded by this app or mpc-store.sh, in the internal drive
+	MPCVersion  string                       `json:"mpcVersion"` // what the running MPC app says it is ("3.10.1.21"), empty when it is not running
+	Firmware    string                       `json:"firmware"`
+	Native      bool                         `json:"native"`   // MPC OS 3.10.1 or later: it loads plugins from a VST2 Plugins folder by itself (native.go)
+	VDrives     []VDrive                     `json:"vdrives"`  // drives a VST2 Plugins folder can be on, with or without one yet
+	VPlugins    []VPlugin                    `json:"vplugins"` // plugin folders in those VST2 Plugins folders
 	Plugins     []DevPlugin                  `json:"-"`
 	Addins      []DevAddin                   `json:"-"`
 	Stores      map[string]map[string]string `json:"-"` // root path -> plugin id -> recorded version
@@ -369,6 +379,26 @@ for v in %s ""; do   # drives with no Synths folder yet, which the app can give 
   free=$(df -kP "$v" 2>/dev/null | awk 'NR==2 {print $4}')
   printf 'drive=%%s\t%%s\t%%s\t%%s\n' "$v" "$fs" "$nx" "${free:-0}"
 done
+echo "mpcver=$(head -n 1 %s 2>/dev/null)"
+for f in %s; do [ -r "$f" ] && sed -n 's/^AZ0[X1]_VERSION=["]*\([^"]*\)["]*$/fw=\1/p' "$f" | head -n 1; done
+# drives for MPC OS 3.10.1's "VST2 Plugins" folder: a drive's own mount point, writable; not MPC OS's system and content mounts
+jv() { tr ',{}' '\n\n\n' < "$2" | sed -n "s/^[[:space:]]*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\\1/p" | head -n 1; }
+for v in %s; do
+  [ -d "$v" ] && [ -w "$v" ] || continue
+  case "${v##*/}" in az01-internal|acvs-*) continue ;; esac
+  set -- $(mnt "$v"); fs=${1:-}; opts=${2:-}
+  [ "$(printf %%s "$v" | sed 's/ /\\040/g')" = "${3:-}" ] || continue
+  case ",$opts," in *,ro,*) continue ;; esac
+  nx=0; case ",$opts," in *,noexec,*) nx=1 ;; esac
+  free=$(df -kP "$v" 2>/dev/null | awk 'NR==2 {print $4}')
+  has=0; [ -d "$v/VST2 Plugins" ] && has=1
+  printf 'vdrive=%%s\t%%s\t%%s\t%%s\t%%s\n' "$v" "$fs" "$nx" "${free:-0}" "$has"
+  [ $has = 1 ] || continue
+  for d in "$v/VST2 Plugins"/*/; do
+    f="${d}plugin.json"; [ -f "$f" ] || continue
+    printf 'vplug=%%s\t%%s\t%%s\t%%s\n' "$v" "$(basename "$d")" "$(jv name "$f")" "$(jv version "$f")"
+  done
+done
 SET=$(ls %s 2>/dev/null | head -n 1)
 if [ -n "$SET" ]; then sed -n 's/.*<Location>\(.*\)<\/Location>.*/loc=\1/p' "$SET"; fi
 mval() { sed -n "s/^$1=//p" "$2" | head -n 1 | sed -e 's/^"\([^"]*\)".*/\1/;t' -e "s/^'\\([^']*\\)'.*/\\1/;t" -e 's/[[:space:]]*#.*//'; }
@@ -377,7 +407,8 @@ for d in %s/*/; do
   u=0; [ -f "${d}uninstall.sh" ] && u=1
   printf 'addin=%%s\t%%s\t%%s\t%%s\n' "$(basename "$d")" "$(mval ADDIN_VERSION "$f")" "$u" "$(mval ADDIN_NAME "$f")"
 done
-true`, shQuote(d.cfg.SynthsDir), d.cfg.SettingsGlob, shQuote(d.cfg.RemoteTmp), d.cfg.LibcPaths, shQuote(d.cfg.MountsFile), d.cfg.RootGlobs, d.cfg.DriveGlob, d.cfg.SettingsGlob, shQuote(d.cfg.AddinsDir))
+true`, shQuote(d.cfg.SynthsDir), d.cfg.SettingsGlob, shQuote(d.cfg.RemoteTmp), d.cfg.LibcPaths, shQuote(d.cfg.MountsFile), d.cfg.RootGlobs, d.cfg.DriveGlob,
+		shQuote(d.cfg.VersionFile), d.cfg.ReleaseFiles, d.cfg.VSTDrives, d.cfg.SettingsGlob, shQuote(d.cfg.AddinsDir))
 	info := DeviceInfo{Host: host, Fingerprint: fp, Synths: d.cfg.SynthsDir, Installed: []string{}, Store: map[string]string{}, Stores: map[string]map[string]string{}}
 	var lines []string
 	var mu sync.Mutex
@@ -409,6 +440,21 @@ true`, shQuote(d.cfg.SynthsDir), d.cfg.SettingsGlob, shQuote(d.cfg.RemoteTmp), d
 			info.Systemctl = true
 		case "libc":
 			info.Libc = strings.TrimSpace(v)
+		case "mpcver":
+			info.MPCVersion = strings.TrimSpace(v)
+		case "fw":
+			if info.Firmware == "" {
+				info.Firmware = strings.TrimSpace(v)
+			}
+		case "vdrive":
+			if len(f) >= 5 {
+				free, _ := strconv.ParseInt(strings.TrimSpace(f[3]), 10, 64)
+				info.VDrives = append(info.VDrives, VDrive{Path: f[0], Label: vdriveLabel(f[0]), FS: f[1], NoExec: f[2] == "1", FreeKB: free, HasFolder: f[4] == "1", Internal: vdriveInternal(f[0])})
+			}
+		case "vplug":
+			if len(f) >= 4 {
+				info.VPlugins = append(info.VPlugins, VPlugin{Drive: f[0], Folder: f[1], Name: f[2], Version: f[3]})
+			}
 		case "loc":
 			locs = append(locs, strings.TrimRight(v, "/"))
 		case "root":
@@ -490,6 +536,14 @@ true`, shQuote(d.cfg.SynthsDir), d.cfg.SettingsGlob, shQuote(d.cfg.RemoteTmp), d
 	}
 	if st, ok := info.Stores[d.cfg.SynthsDir]; ok {
 		info.Store = st
+	}
+	info.Native = versionAtLeast(info.MPCVersion, nativeMinVersion) || versionAtLeast(info.Firmware, nativeMinVersion)
+	sort.SliceStable(info.VDrives, func(i, j int) bool { return !info.VDrives[i].Internal && info.VDrives[j].Internal }) // cards and drives first
+	if info.VDrives == nil {
+		info.VDrives = []VDrive{}
+	}
+	if info.VPlugins == nil {
+		info.VPlugins = []VPlugin{}
 	}
 	d.Info = info
 	return nil

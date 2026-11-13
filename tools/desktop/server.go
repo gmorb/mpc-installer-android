@@ -61,6 +61,8 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/device", a.devicePlugins)
 	mux.HandleFunc("/api/remove", a.remove)
 	mux.HandleFunc("/api/mkroot", a.mkroot)
+	mux.HandleFunc("/api/mkvst2", a.mkvst2)
+	mux.HandleFunc("/api/remember", a.remember)
 	mux.HandleFunc("/api/unregistered", a.unregistered)
 	mux.HandleFunc("/api/register", a.register)
 	mux.HandleFunc("/api/backups", a.backups)
@@ -136,6 +138,7 @@ func (a *App) state(w http.ResponseWriter, r *http.Request) {
 	if a.dev != nil {
 		out["device"] = a.dev.Info
 		out["problems"] = a.dev.Info.problems()
+		out["nativeProblems"] = a.dev.Info.nativeProblems()
 	}
 	if a.job != nil {
 		out["job"] = a.job.ID
@@ -147,7 +150,10 @@ func (a *App) connect(w http.ResponseWriter, r *http.Request) {
 	if !postOnly(w, r) {
 		return
 	}
-	var in struct{ Host, Password string }
+	var in struct {
+		Host, Password string
+		Remember       *bool // nil: leave what is saved alone; true: save these after connecting; false: forget
+	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
 		fail(w, 400, "bad request")
 		return
@@ -157,13 +163,20 @@ func (a *App) connect(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
+	if in.Remember != nil { // only details that worked are saved
+		if *in.Remember {
+			saveRemembered(remembered{Host: strings.TrimSpace(in.Host), Password: in.Password})
+		} else {
+			forgetRemembered()
+		}
+	}
 	a.mu.Lock()
 	if a.dev != nil {
 		a.dev.Close()
 	}
 	a.dev = dev
 	a.mu.Unlock()
-	writeJSON(w, 200, map[string]any{"device": dev.Info, "problems": dev.Info.problems()})
+	writeJSON(w, 200, map[string]any{"device": dev.Info, "problems": dev.Info.problems(), "nativeProblems": dev.Info.nativeProblems()})
 }
 
 func (a *App) disconnect(w http.ResponseWriter, r *http.Request) {
@@ -200,6 +213,23 @@ func (a *App) catalog(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	vwhere := map[string]VPlugin{} // plugin folder in a VST2 Plugins folder -> where (the first drive wins)
+	if a.dev != nil {
+		for _, vp := range a.dev.Info.VPlugins {
+			if _, ok := vwhere[vp.Folder]; !ok {
+				vwhere[vp.Folder] = vp
+			}
+			if vp.Name != "" { // a converted plugin's folder is named after what the plugin reports, which can differ from the package's
+				for _, c := range a.cat {
+					if c.Name == vp.Name {
+						if _, ok := vwhere[c.Skin]; !ok {
+							vwhere[c.Skin] = vp
+						}
+					}
+				}
+			}
+		}
+	}
 	type row struct {
 		CatPlugin
 		Installed        bool   `json:"installed"`
@@ -223,6 +253,10 @@ func (a *App) catalog(w http.ResponseWriter, r *http.Request) {
 		}
 		dp, ok := where[c.Skin]
 		iv, at := "", ""
+		if vp, vok := vwhere[c.Skin]; vok && (!ok || a.dev.Info.Native) { // in a VST2 Plugins folder: its plugin.json has the version
+			rows = append(rows, row{c, true, vdriveLabel(vp.Drive), vp.Version, vp.Version != "" && vp.Version != c.Version})
+			continue
+		}
 		if ok {
 			iv = a.dev.Info.Stores[dp.Root][c.ID]
 			if rt, found := a.dev.Info.root(dp.Root); found && !rt.Primary {
@@ -318,7 +352,51 @@ func (a *App) mkroot(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"device": a.dev.Info, "problems": a.dev.Info.problems()})
+	writeJSON(w, 200, map[string]any{"device": a.dev.Info, "problems": a.dev.Info.problems(), "nativeProblems": a.dev.Info.nativeProblems()})
+}
+
+// mkvst2 creates the VST2 Plugins folder on a drive that has none (Device.MakeVST2), for MPC OS 3.10.1+.
+func (a *App) mkvst2(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct{ Drive string }
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev == nil {
+		fail(w, 400, "connect to the device first")
+		return
+	}
+	if a.job != nil {
+		if st, _, _, _ := a.job.snapshot(0); st == "running" {
+			fail(w, 409, "an install is running: wait for it to finish")
+			return
+		}
+	}
+	if err := a.dev.MakeVST2(in.Drive); err != nil {
+		fail(w, 400, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"device": a.dev.Info, "problems": a.dev.Info.problems(), "nativeProblems": a.dev.Info.nativeProblems()})
+}
+
+// remember: GET says what "Remember this MPC" saved (to fill in the form), DELETE (or POST {"forget":true}) forgets it.
+func (a *App) remember(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		rm, ok := loadRemembered()
+		writeJSON(w, 200, map[string]any{"remember": ok, "host": rm.Host, "password": rm.Password})
+		return
+	}
+	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
+		fail(w, 405, "GET or POST")
+		return
+	}
+	forgetRemembered()
+	writeJSON(w, 200, map[string]bool{"ok": true})
 }
 
 func (a *App) discard(w http.ResponseWriter, r *http.Request) {
@@ -345,6 +423,9 @@ type selection struct {
 	Root     string   `json:"root"`     // the Synths folder to install into ("" = the internal drive)
 	Register bool     `json:"register"` // InstallOpts.Register
 	Confirm  bool     `json:"confirm"`
+	Method   string   `json:"method"`  // "vst2": into a drive's VST2 Plugins folder (MPC OS 3.10.1+); otherwise the Synths folder
+	Drive    string   `json:"drive"`   // for "vst2": the drive (its mount point)
+	Restart  bool     `json:"restart"` // for "vst2": restart MPC afterwards
 }
 
 // resolve turns a selection into install items. Caller holds a.mu.
@@ -409,6 +490,20 @@ func (a *App) plan(w http.ResponseWriter, r *http.Request) {
 	}
 	var lines []line
 	restarts := 0
+	if s.Method == "vst2" { // MPC keeps running: plugins in VST2 Plugins need no restart (one, at the end, only when asked for)
+		for _, it := range items {
+			if it.Catalog != nil {
+				lines = append(lines, line{it.Catalog.Name, it.Catalog.Version, "catalog", it.Catalog.Size >> 20})
+			} else {
+				lines = append(lines, line{it.Pkg.Title, it.Pkg.Version, "your zip", it.Pkg.Size >> 20})
+			}
+		}
+		if s.Restart {
+			restarts = 1
+		}
+		writeJSON(w, 200, map[string]any{"items": lines, "restarts": restarts, "maybeMore": false})
+		return
+	}
 	anyDefer, fromCatalog := false, false
 	for _, it := range items {
 		if it.Catalog != nil {
@@ -466,6 +561,46 @@ func (a *App) install(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
+	onOK := func(p *Package) { // an uploaded zip that installed is done with: drop it (one that failed stays, to try again)
+		if p.Source != "upload" {
+			return
+		}
+		a.mu.Lock()
+		if _, ok := a.uploads[p.Handle]; ok {
+			os.Remove(p.Path)
+			delete(a.uploads, p.Handle)
+		}
+		a.mu.Unlock()
+	}
+	refresh := func(dev *Device) func() {
+		return func() {
+			a.mu.Lock()
+			defer a.mu.Unlock()
+			if a.dev == dev {
+				dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+			}
+		}
+	}
+	if s.Method == "vst2" {
+		if s.Drive == "" {
+			fail(w, 400, "choose where to install first (step 3, Install to)")
+			return
+		}
+		drive, ok := a.dev.Info.vdrive(s.Drive)
+		if !ok {
+			fail(w, 400, "that is not a drive on the device (connect again to rescan)")
+			return
+		}
+		if !drive.HasFolder {
+			fail(w, 400, drive.Label+" has no "+VST2Dir+" folder yet: create it first")
+			return
+		}
+		j := &Job{ID: randHex(4), State: "running"}
+		a.job = j
+		go RunNativeInstall(a.dev, drive, items, a.work, j, refresh(a.dev), InstallOpts{Restart: s.Restart, OnOK: onOK})
+		writeJSON(w, 200, map[string]string{"job": j.ID})
+		return
+	}
 	if s.Root == "" { // no silent default: the internal drive is only used when the page names it (after its warning)
 		fail(w, 400, "choose where to install first (step 3, Install to)")
 		return
@@ -478,13 +613,7 @@ func (a *App) install(w http.ResponseWriter, r *http.Request) {
 	j := &Job{ID: randHex(4), State: "running"}
 	a.job = j
 	dev := a.dev
-	go RunInstall(dev, root, items, a.work, j, func() {
-		a.mu.Lock()
-		defer a.mu.Unlock()
-		if a.dev == dev {
-			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
-		}
-	}, InstallOpts{Register: s.Register})
+	go RunInstall(dev, root, items, a.work, j, refresh(dev), InstallOpts{Register: s.Register, OnOK: onOK})
 	writeJSON(w, 200, map[string]string{"job": j.ID})
 }
 
@@ -499,7 +628,7 @@ func (a *App) jobStatus(w http.ResponseWriter, r *http.Request) {
 	since := 0
 	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
 	st, lines, next, result := j.snapshot(since)
-	writeJSON(w, 200, map[string]any{"id": j.ID, "state": st, "lines": lines, "next": next, "result": result})
+	writeJSON(w, 200, map[string]any{"id": j.ID, "state": st, "lines": lines, "next": next, "result": result, "ok": j.okList()})
 }
 
 // knownPlugin says what the app can tell about a plugin folder on the device: which files are the user's own is only known for
@@ -576,7 +705,15 @@ func (a *App) devicePlugins(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "connect to the device first")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"plugins": a.classify(), "roots": a.dev.Info.Roots})
+	type vrow struct {
+		VPlugin
+		DriveLabel string `json:"driveLabel"`
+	}
+	vps := []vrow{}
+	for _, vp := range a.dev.Info.VPlugins {
+		vps = append(vps, vrow{vp, vdriveLabel(vp.Drive)})
+	}
+	writeJSON(w, 200, map[string]any{"plugins": a.classify(), "roots": a.dev.Info.Roots, "vplugins": vps})
 }
 
 func (a *App) remove(w http.ResponseWriter, r *http.Request) {
@@ -587,6 +724,7 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 		Items []struct {
 			Root   string `json:"root"`
 			Folder string `json:"folder"`
+			Native bool   `json:"native"` // a folder in a VST2 Plugins folder; Root is then the drive
 		} `json:"items"`
 		Confirm bool `json:"confirm"`
 	}
@@ -610,6 +748,41 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "a job is already running")
 			return
 		}
+	}
+	var natives []VPlugin
+	for _, it := range in.Items { // VST2 Plugins folders: checked against what the last scan found there, never taken from the page
+		if !it.Native {
+			continue
+		}
+		found := false
+		for _, vp := range a.dev.Info.VPlugins {
+			if vp.Drive == it.Root && vp.Folder == it.Folder {
+				natives, found = append(natives, vp), true
+				break
+			}
+		}
+		if !found {
+			fail(w, 400, fmt.Sprintf("%q is not a plugin folder in a %s folder on the device", it.Folder, VST2Dir))
+			return
+		}
+	}
+	if len(natives) > 0 {
+		if len(natives) != len(in.Items) {
+			fail(w, 400, "remove plugins from the "+VST2Dir+" folder and from Synths folders separately")
+			return
+		}
+		j := &Job{ID: randHex(4), State: "running"}
+		a.job = j
+		dev := a.dev
+		go RunNativeRemove(dev, natives, j, func() {
+			a.mu.Lock()
+			defer a.mu.Unlock()
+			if a.dev == dev {
+				dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+			}
+		})
+		writeJSON(w, 200, map[string]string{"job": j.ID})
+		return
 	}
 	byKey := map[string]knownPlugin{}
 	for _, kp := range a.classify() {

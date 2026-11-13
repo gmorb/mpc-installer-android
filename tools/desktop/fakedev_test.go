@@ -105,7 +105,8 @@ func (fd *fakeDevice) cfg() Config {
 	roots = append(append(roots, aliases...), cards...)
 	return Config{Port: port, User: "root", RemoteTmp: filepath.Join(fd.dir, "tmp"), SynthsDir: filepath.Join(fd.dir, "Synths"),
 		RootGlobs: strings.Join(roots, " "), DriveGlob: filepath.Join(fd.dir, "Drives", "*"), MountsFile: "/proc/mounts", SettingsGlob: filepath.Join(fd.dir, "Settings", "*", "MPC.settings"),
-		AddinsDir: filepath.Join(fd.dir, "addins"), LibcPaths: filepath.Join(fd.dir, "libc.so.6")}
+		AddinsDir: filepath.Join(fd.dir, "addins"), LibcPaths: filepath.Join(fd.dir, "libc.so.6"),
+		VSTDrives: filepath.Join(fd.dir, "Drives", "*"), VersionFile: filepath.Join(fd.dir, "mpc.version"), ReleaseFiles: filepath.Join(fd.dir, "az0x-release")}
 }
 
 func (fd *fakeDevice) calls() []string {

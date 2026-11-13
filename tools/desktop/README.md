@@ -9,6 +9,14 @@ It uses the same release zips and the same `install.sh` as every other route (`h
 path. What it adds: a friendly page, one copy of each zip over SSH (as a tar stream, so executable bits and symlinks survive), and
 one MPC stop and start around the whole batch when the installers allow it.
 
+
+**MPC OS 3.10.1 and later** load plugins from a `VST2 Plugins` folder at the top of any drive (inMusic's MPC Plugin Builder SDK). The
+app reads the MPC's version when it connects and then installs that way: catalog zips are converted on the fly (`native.go`, after the
+SDK's `tools/legacy_convert.py`), copied into the chosen drive's `VST2 Plugins` folder (which the app can create, `/api/mkvst2`) and
+checked, with MPC running (`nativejob.go`). Older, modded MPCs keep the Synths folder method below. `go test -run TestUIServe` with
+`MPC_UI_SERVE=<port>` serves the page against a simulated 3.10.1 MPC for trying it in a browser. "Remember this MPC" keeps the address
+and password in `remember.json` in the user's config folder (0600), only when ticked (`remember.go`).
+
 ## What it does, in order
 
 1. **Connect:** SSH as root with your password, a key in `~/.ssh` (no passphrase), or neither on a device whose root has no password. It reads the device (32-bit ARM or Gen2 aarch64: Gen2 gets the catalog's aarch64 zips; `tar`?

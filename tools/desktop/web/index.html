@@ -225,6 +225,20 @@ details.intdisc #intopt:not(:empty) { margin-top:10px; }
 label.opt, div.opt { display:flex; gap:10px; align-items:flex-start; margin-top:10px; color:var(--ink-2); font-size:14.5px; cursor:pointer; }
 label.opt input { width:20px; height:20px; flex:none; margin-top:1px; }
 label.opt[hidden], div.opt[hidden] { display:none; }
+fieldset.method { border:0; margin:0 0 16px; padding:0; min-width:0; }
+fieldset.method[hidden] { display:none; }
+fieldset.method legend { font-size:14px; font-weight:600; color:var(--ink); padding:0; margin-bottom:8px; }
+.methods { display:grid; gap:8px; }
+@media (min-width:620px) { .methods { grid-template-columns:1fr 1fr; } }
+#conn .remember { grid-column:1 / -1; margin-top:0; }
+#conn .remember small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
+#restartl { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 16px; }
+#restartl small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
+#vopts:not(:empty) { display:grid; gap:8px; }
+#vdrives { margin-top:12px; } #vdrives .small { margin:0 0 8px; }
+#vdrivelist li { flex-wrap:wrap; align-items:center; } #vdrivelist .t { flex:1 1 180px; min-width:0; cursor:default; }
+#vwarn:not(:empty) { background:var(--sunken); border:1px solid var(--line); border-radius:12px; padding:10px 14px; font-size:14px; }
+details.intdisc #vintopt:not(:empty) { margin-top:10px; display:grid; gap:8px; }
 #regboxl { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 16px; }
 #regboxl small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
 #go { width:100%; min-height:52px; font-size:16px; }
@@ -291,12 +305,13 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 <section id="s1" class="step" data-state="current">
   <span class="pad" aria-hidden="true">1</span>
   <h2>Connect to your MPC</h2>
-  <p class="sub">Your MPC needs root SSH access (a modded unit). Find its IP address in the MPC's network settings or in your router.</p>
+  <p class="sub">On MPC OS 3.10.1 or later, turn on developer mode, which starts the MPC's SSH server: Preferences, Info, then tap the version 3 times, the serial number twice and the firmware version once. Older MPCs need a modded unit with root SSH. Find the IP address in the MPC's network settings or in your router.</p>
   <p class="note"><b>Use at your own risk.</b> Plugins are community-made and run as root on your device. They can crash MPC or lose unsaved work, and at worst the device may need its OS reinstalled. Save your project and back up first. Not affiliated with Akai Professional.</p>
   <form id="conn" class="row" autocomplete="off">
     <label class="f">IP address<input id="host" type="text" inputmode="decimal" placeholder="192.168.1.20" spellcheck="false" required></label>
-    <label class="f">Root password<input id="pw" type="password" placeholder="Leave empty if there is none"></label>
+    <label class="f">Password<input id="pw" type="password" placeholder="Leave empty if there is none"></label>
     <button class="primary" id="connect" type="submit">Connect</button>
+    <label class="opt remember"><input type="checkbox" id="remember"><span>Remember this MPC<small>Saves the IP address and password on this device only, so they are filled in next time. Untick to forget them.</small></span></label>
   </form>
   <p class="msg" id="connmsg" role="status" aria-live="polite"></p>
   <div class="devsum" id="devsum"></div>
@@ -327,12 +342,26 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
   <span class="pad" aria-hidden="true">3</span>
   <h2>Install</h2>
   <p class="sub" id="summary">Nothing selected yet.</p>
+  <fieldset class="method" id="methodbox" hidden><legend>Install method</legend>
+    <div class="methods" role="radiogroup" aria-label="Install method">
+      <label class="whereopt"><input type="radio" name="method" value="vst2"><span><b>VST2 Plugins folder</b><small>MPC OS 3.10.1 and later. Catalog plugins are converted for it on the fly. MPC keeps running.</small></span></label>
+      <label class="whereopt"><input type="radio" name="method" value="synths"><span><b>Synths folder</b><small>The older way, for modded MPCs: registers the plugins in MPC's settings and restarts MPC.</small></span></label>
+    </div>
+  </fieldset>
+  <fieldset class="where" id="vwhere" hidden><legend>Install to</legend><div id="vopts"></div><p class="msg" id="vnodrive" hidden></p>
+    <div id="vdrives" hidden><p class="small">These drives have no <code>VST2 Plugins</code> folder yet. MPC only looks in a folder with exactly that name at the top of a drive: create it on the drive you want to use.</p><ul class="list" id="vdrivelist"></ul></div>
+    <p class="msg" id="vdrivemsg" role="status" aria-live="polite"></p><p class="msg" id="vwarn"></p>
+    <details id="vinternal" class="intdisc" hidden><summary>Use the MPC's internal storage instead (not recommended)</summary>
+      <p class="small">The internal storage is the MPC's built-in flash memory. Installing and updating plugins, and the files plugins write, all add wear to it, and if it fails the MPC itself needs repair. MPC also only notices new plugins there when it starts. An SD card, USB drive or SSD is cheap to replace: use one of those whenever you can.</p>
+      <label class="small opt"><input type="checkbox" id="vintack"> I understand: let me install to the internal storage</label><div id="vintopt"></div>
+    </details></fieldset>
   <fieldset class="where" id="where" hidden><legend>Install to</legend><div id="whereopts"></div><p class="msg" id="nodrive" hidden></p><div id="drives" hidden><p class="small">These drives have no <code>Synths</code> folder yet. Create one to install there.</p><ul class="list" id="drivelist"></ul></div><p class="msg" id="drivemsg" role="status" aria-live="polite"></p><p class="msg" id="wherewarn"></p>
     <details id="internal" class="intdisc" hidden><summary>Use the MPC's internal drive instead (not recommended)</summary>
       <p class="small">The internal drive is the MPC's built-in flash storage (eMMC). Installing and updating plugins, and the files plugins write, all add wear to it, and if it fails the MPC itself needs repair. An SD card, USB drive or SSD is cheap to replace: use one of those whenever you can.</p>
       <label class="small opt"><input type="checkbox" id="intack"> I understand: let me install to the internal drive</label><div id="intopt"></div>
     </details></fieldset>
   <label class="opt" id="regboxl"><input type="checkbox" id="regon" checked><span>Register every plugin folder with MPC afterwards<small>Built in, nothing needed on the MPC. Adds missing entries, drops broken ones, and backs up MPC's settings first.</small></span></label>
+  <label class="opt" id="restartl" hidden><input type="checkbox" id="restarton"><span>Restart MPC afterwards<small>MPC notices new plugins on cards and USB drives by itself. Restart it when a plugin does not show up, or when it was already loaded on a track (unsaved work is lost).</small></span></label>
   <button class="primary" id="go" disabled>Install…</button>
   <p class="msg" id="result" role="status" aria-live="polite"></p>
   <pre class="log" id="log" hidden></pre>
@@ -344,7 +373,7 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 <section id="s4" class="off">
 <details id="d4" class="collapse">
   <summary><h2>Remove plugins</h2><span class="hint">Show</span></summary>
-  <p class="sub">The plugins on your MPC. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.</p>
+  <p class="sub" id="rmsub">The plugins on your MPC. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.</p>
   <ul class="list scroll" id="dev" aria-label="Plugins on the device"><li class="small">Connect to see what is on the device.</li></ul>
   <button id="rm" disabled>Remove…</button>
   <p class="msg" id="rmresult" role="status" aria-live="polite"></p>
@@ -391,7 +420,7 @@ footer { color:var(--muted); font-size:13px; margin-top:32px; max-width:62ch; }
 "use strict";
 var T = new URLSearchParams(location.search).get("t") || "";
 try { history.replaceState(null, "", location.pathname); } catch (e) {}
-var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
+var S = { connected: false, problems: [], nprob: [], method: "synths", vdrives: [], vdrive: "", vdev: [], native: false, cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", banners: true, unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
 function $(id) { return document.getElementById(id); }
 function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
@@ -410,32 +439,117 @@ function drawDevSum(info, n, places) {
   var h = el("div", "h"); h.appendChild(el("span", null, "Connected to " + info.host)); h.appendChild(el("small", null, info.arch || "")); box.appendChild(h);
   var dl = el("dl");
   function row(k, v, cls) { dl.appendChild(el("dt", null, k)); dl.appendChild(el("dd", cls || null, v)); }
-  row("Plugin folders", n + " found");
-  row("Locations", places || info.synths || "none yet");
+  if (info.mpcVersion || info.firmware) row("MPC OS", (info.mpcVersion || info.firmware) + (info.native ? " (loads plugins from VST2 Plugins folders)" : ""));
+  if (S.method === "vst2") {
+    var vf = (info.vdrives || []).filter(function (d) { return d.hasFolder; }).map(function (d) { return d.label; });
+    row("Plugins", (info.vplugins || []).length + " in VST2 Plugins folders");
+    row("VST2 Plugins on", vf.length ? vf.join(", ") : "no drive yet (create the folder in step 3)");
+  } else {
+    row("Plugin folders", n + " found");
+    row("Locations", places || info.synths || "none yet");
+  }
   row("Device key", info.fingerprint, "fp");
   box.appendChild(dl);
-  if (S.problems.length) box.appendChild(el("p", "bad", "Cannot install here: " + S.problems.join("; ") + "."));
+  if (probs().length) box.appendChild(el("p", "bad", "Cannot install here: " + probs().join("; ") + "."));
 }
-function setConnected(c, info, problems) {
-  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
+function probs() { return S.method === "vst2" ? S.nprob : S.problems; }
+function setConnected(c, info, problems, nprob) {
+  S.connected = c; S.problems = problems || []; S.nprob = nprob || []; S.info = c ? info : null; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
   $("browsenote").hidden = !!c; $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c);
   var cs = $("cstate"); cs.classList.toggle("on", !!c); cs.firstChild.textContent = c && info ? "Connected to " + info.host : "Not connected";
   if (!c) $("devsum").textContent = "";
   if (c) {
     var n = (info.installed || []).length;
     S.roots = info.roots || []; S.drives = info.drives || []; S.root = defaultRoot();
+    S.vdrives = info.vdrives || []; S.native = !!info.native; S.vdrive = defaultVDrive();
+    var canV = S.native || S.vdrives.some(function (d) { return d.hasFolder; }) || (S.problems.length > 0 && S.vdrives.length > 0);
+    S.method = S.native || (canV && S.problems.length > 0) ? "vst2" : "synths";
+    $("methodbox").hidden = !(canV && S.problems.length === 0);
     var places = S.roots.map(function (r) { return r.label + " (" + (r.fs ? r.fs + ", " : "") + gb(r.freeKB) + " free)"; }).join("; ");
     msg($("connmsg"), "");
     drawDevSum(info, n, places);
-    drawWhere(); loadCatalog(); loadDevice(); loadUnreg(); loadBackups();
+    drawWhere(); drawMethod(); loadCatalog(); loadDevice(); loadUnreg(); loadBackups();
   }
   refresh();
 }
+/* Install method: the VST2 Plugins folder (MPC OS 3.10.1+: plugins converted on the fly, MPC keeps running) or the Synths folder
+   (modded MPCs: MPC.settings is edited and MPC restarts). Each has its own places to install to and its own tools. */
+function drawMethod() {
+  var v = S.method === "vst2";
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=method]'), function (r) { r.checked = r.value === S.method; });
+  $("where").hidden = v || !S.connected; $("regboxl").hidden = v; $("vwhere").hidden = !v || !S.connected; $("restartl").hidden = !v;
+  $("s5").hidden = v; $("s6").hidden = v;   // registering and MPC.settings backups belong to the Synths method
+  text($("rmsub"), v ? "The plugins in the VST2 Plugins folders on your MPC. Removing one deletes its whole folder, including any samples or other files it came with. MPC keeps running."
+    : "The plugins on your MPC. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.");
+  if (v) drawVWhere();
+  if (S.info) drawDevSum(S.info, (S.info.installed || []).length, S.roots.map(function (r) { return r.label + " (" + (r.fs ? r.fs + ", " : "") + gb(r.freeKB) + " free)"; }).join("; "));
+  S.pickDev = {}; drawDev(); refresh();
+}
+Array.prototype.forEach.call(document.querySelectorAll('input[name=method]'), function (r) {
+  r.addEventListener("change", function () { if (r.checked) { S.method = r.value; drawMethod(); } });
+});
+// A card, USB drive or SSD that already has the folder; the internal storage is only chosen by hand, after its warning
+function defaultVDrive() {
+  var ok = S.vdrives.filter(function (d) { return !d.internal && d.hasFolder; });
+  var d = ok.filter(function (x) { return !x.noExec; })[0] || ok[0];
+  return d ? d.path : "";
+}
+function vOption(d, box, disabled) {
+  var lab = el("label", "whereopt"), rb = document.createElement("input"); rb.type = "radio"; rb.name = "vwhere"; rb.value = d.path; rb.checked = d.path === S.vdrive; rb.disabled = !!disabled;
+  rb.addEventListener("change", function () { S.vdrive = d.path; drawVWarn(); refresh(); });
+  var sp = el("span"); sp.appendChild(el("b", null, d.label)); sp.appendChild(el("small", null, d.path + "/VST2 Plugins · " + (d.fs ? d.fs + " · " : "") + gb(d.freeKB) + " free"));
+  lab.appendChild(rb); lab.appendChild(sp); box.appendChild(lab);
+}
+function vCreate(d, ul, disabled) {
+  var li = el("li"), t = el("div", "t");
+  t.appendChild(el("b", null, d.label));
+  t.appendChild(el("span", "d", d.path + " · " + (d.fs ? d.fs + " · " : "") + gb(d.freeKB) + " free"));
+  var b = el("button", null, "Create VST2 Plugins folder"); b.type = "button"; b.disabled = !!disabled;
+  b.addEventListener("click", function () { makeVST2(d, b); });
+  li.appendChild(t); li.appendChild(b); ul.appendChild(li);
+}
+function drawVWhere() {
+  var ext = S.vdrives.filter(function (d) { return !d.internal; }), inn = S.vdrives.filter(function (d) { return d.internal; });
+  var box = $("vopts"); box.textContent = "";
+  ext.filter(function (d) { return d.hasFolder; }).forEach(function (d) { vOption(d, box); });
+  var none = !ext.some(function (d) { return d.hasFolder; }), nd = $("vnodrive"); nd.hidden = !none;
+  msg(nd, ext.length ? "Create a VST2 Plugins folder on your card or drive below, then install there." : "No SD card, USB drive or SSD found under /media. Plug one into the MPC, then connect again.", "err");
+  var ul = $("vdrivelist"); ul.textContent = ""; var bare = ext.filter(function (d) { return !d.hasFolder; });
+  $("vdrives").hidden = !bare.length; bare.forEach(function (d) { vCreate(d, ul); });
+  $("vinternal").hidden = !inn.length;
+  var io = $("vintopt"); io.textContent = ""; var ack = $("vintack").checked;
+  inn.forEach(function (d) {
+    if (d.hasFolder) vOption(d, io, !ack);
+    else { var u = el("ul", "list"); vCreate(d, u, !ack); io.appendChild(u); }
+    if (S.vdrive === d.path) $("vinternal").open = true;
+  });
+  drawVWarn();
+}
+function drawVWarn() {
+  var d = S.vdrives.filter(function (x) { return x.path === S.vdrive; })[0], n = [];
+  if (d && d.noExec) n.push("This drive is mounted noexec right now. If a plugin does not load, restart the MPC with the drive in.");
+  if (d && /^(vfat|exfat|msdos|ntfs|ntfs3|fuseblk)$/i.test(d.fs || "")) n.push("Formatted " + d.fs + ", which cannot store symbolic links: a plugin that needs them cannot be installed here.");
+  if (d && d.internal) n.push("MPC only notices new plugins on its internal storage when it starts: tick Restart MPC afterwards, or restart it yourself.");
+  msg($("vwarn"), n.join(" "), "");
+}
+function makeVST2(d, b) {
+  b.disabled = true; msg($("vdrivemsg"), "Creating " + d.path + "/VST2 Plugins…");
+  api("/api/mkvst2", { drive: d.path }).then(function (j) {
+    S.vdrives = j.device.vdrives || []; S.vdrive = d.path; S.nprob = j.nativeProblems || S.nprob;
+    drawVWhere(); msg($("vdrivemsg"), "Created " + d.path + "/VST2 Plugins.", "ok"); refresh();
+  }).catch(function (e) { b.disabled = false; msg($("vdrivemsg"), e.message, "err"); });
+}
+$("vintack").addEventListener("change", function () {
+  var d = S.vdrives.filter(function (x) { return x.path === S.vdrive; })[0];
+  if (!$("vintack").checked && d && d.internal) S.vdrive = defaultVDrive();
+  drawVWhere(); refresh();
+});
 /* After an install, the plugins it put on the device are unticked, so the next install starts from a clean selection. A catalog
    plugin is unticked once the device reports it at the catalog's version (one that failed stays ticked to try again); your own
    zips are unticked when the whole install finished. */
 function untickInstalled() {
   var a = S.after; if (!a) return; S.after = null;
+  if (a.ok) { a.ok.forEach(function (k) { if (k.indexOf("catalog:") === 0) S.pickCat[k.slice(8)] = false; }); return; }   // the job says which went in
   a.cat.forEach(function (id) { var p = S.cat.filter(function (x) { return x.id === id; })[0]; if (p && p.installed && !p.update) S.pickCat[id] = false; });
   if (a.done) { a.ups.forEach(function (h) { S.pickUp[h] = false; }); drawUps(); }
 }
@@ -640,11 +754,31 @@ function drawUnreg() {
   $("regbadge").hidden = !n; text($("regbadge"), n + " waiting");
 }
 function loadDevice() {
-  return api("/api/device").then(function (j) { S.dev = j.plugins; if (j.roots) { S.roots = j.roots; } drawDev(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); msg($("rmresult"), e.message, "err"); });
+  return api("/api/device").then(function (j) { S.dev = j.plugins; S.vdev = j.vplugins || []; if (j.roots) { S.roots = j.roots; } drawDev(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); msg($("rmresult"), e.message, "err"); });
 }
-function devKey(p) { return p.root + "\u0000" + p.folder; }
+function devKey(p) { return (p.native ? "v" : "") + p.root + "\u0000" + p.folder; }
+function devItems() {   // what Remove plugins lists: the VST2 Plugins folders' plugins, or the Synths folders'
+  if (S.method !== "vst2") return S.dev;
+  return S.vdev.map(function (v) { return { native: true, root: v.drive, rootLabel: v.driveLabel, folder: v.folder, name: v.name, version: v.version, known: true, keep: [] }; });
+}
 function drawDev() {
-  var ul = $("dev"); ul.textContent = ""; var last = null, grouped = S.roots.length > 1 || S.dev.some(function (p) { return p.addin; });
+  var ul = $("dev"); ul.textContent = "";
+  if (S.method === "vst2") {
+    var lastv = null, many = S.vdrives.filter(function (d) { return d.hasFolder; }).length > 1;
+    devItems().forEach(function (p, i) {
+      if (many && p.root !== lastv) { lastv = p.root; ul.appendChild(el("li", "grp", p.rootLabel + " · " + p.root + "/VST2 Plugins")); }
+      var key = devKey(p), li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "d_" + i; cb.checked = !!S.pickDev[key];
+      cb.addEventListener("change", function () { S.pickDev[key] = cb.checked; refresh(); });
+      var t = el("div", "t"), b = el("b", null, p.name || p.folder);
+      if (p.version) b.appendChild(el("span", "tag", "v" + p.version));
+      t.appendChild(b); t.appendChild(el("span", "d", p.folder + (many ? "" : " · " + p.rootLabel)));
+      var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
+      li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
+    });
+    if (!S.vdev.length) ul.appendChild(el("li", "small", "No plugins in a VST2 Plugins folder on the device yet."));
+    fitList(ul, 3);
+    return;
+  } var last = null, grouped = S.roots.length > 1 || S.dev.some(function (p) { return p.addin; });
   S.dev.forEach(function (p, i) {
     if (grouped && p.root !== last) { last = p.root; ul.appendChild(el("li", "grp", (p.rootLabel || rootLabelOf(p.root)) + " · " + p.root)); }
     var key = devKey(p), li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "d_" + i; cb.disabled = !p.known; cb.checked = !!S.pickDev[key] && p.known;
@@ -679,7 +813,8 @@ function drawUps() {
     S.pickUp[p.handle] = cb.checked;
     cb.addEventListener("change", function () { S.pickUp[p.handle] = cb.checked; refresh(); });
     var t = el("div", "t"), b = el("b", null, p.title); b.appendChild(el("span", "tag", "your zip"));
-    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " · " + mb(p.size) + (p.defer ? "" : " · older installer: MPC restarts for this one on its own")));
+    if (p.native) b.appendChild(el("span", "tag", "MPC OS 3.10.1 format"));
+    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " · " + mb(p.size) + (p.native ? " · goes into a VST2 Plugins folder as it is" : p.defer ? "" : " · older installer: MPC restarts for this one on its own")));
     var rm = el("button", null, "Remove"); rm.type = "button";
     rm.addEventListener("click", function () { api("/api/discard", { handle: p.handle }).then(function () { S.ups = S.ups.filter(function (x) { return x.handle !== p.handle; }); drawUps(); refresh(); if (S.connected) loadDevice(); }); });
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
@@ -689,21 +824,22 @@ function drawUps() {
 function selection() {
   return { catalog: S.cat.filter(function (p) { return S.pickCat[p.id]; }).map(function (p) { return p.id; }),
            uploads: S.ups.filter(function (p) { return S.pickUp[p.handle]; }).map(function (p) { return p.handle; }), root: S.root,
-           register: $("regon").checked };
+           register: $("regon").checked, method: S.method === "vst2" ? "vst2" : "", drive: S.vdrive, restart: $("restarton").checked };
 }
+function target() { return S.method === "vst2" ? S.vdrive : S.root; }
 function refresh() {
   var s = selection(), n = s.catalog.length + s.uploads.length;
-  text($("summary"), !S.connected ? "Connect to your device first." : n === 0 ? "Nothing selected yet." : n + " plugin" + (n === 1 ? "" : "s") + " selected." + (S.root ? "" : " Choose where to install them below."));
-  $("go").disabled = !S.connected || n === 0 || S.running || S.problems.length > 0 || !S.root;
+  text($("summary"), !S.connected ? "Connect to your device first." : n === 0 ? "Nothing selected yet." : n + " plugin" + (n === 1 ? "" : "s") + " selected." + (target() ? "" : " Choose where to install them below."));
+  $("go").disabled = !S.connected || n === 0 || S.running || probs().length > 0 || !target();
   $("go2").disabled = $("go").disabled;
   Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
   var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
-  $("rm").disabled = !S.connected || S.running || S.problems.length > 0 || !S.dev.some(function (p) { return S.pickDev[devKey(p)] && p.known; });
+  $("rm").disabled = !S.connected || S.running || probs().length > 0 || !devItems().some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
   $("s1").dataset.state = S.connected ? "done" : "current";
   $("s2").dataset.state = n > 0 ? "done" : S.connected ? "current" : "open";
   $("s3").dataset.state = !S.connected || n === 0 ? "locked" : "current";
-  $("selbar").hidden = !(n > 0 && !S.running && (!S.connected || S.problems.length === 0)) || (S.connected && S.goSeen);
+  $("selbar").hidden = !(n > 0 && !S.running && (!S.connected || probs().length === 0)) || (S.connected && S.goSeen);
   text($("go2"), S.connected ? "Install…" : "Connect to install");
   if (!S.connected) $("go2").disabled = false;
   text($("selcount"), n + " plugin" + (n === 1 ? "" : "s") + " selected");
@@ -716,7 +852,7 @@ $("intack").addEventListener("change", function () {
 });
 $("conn").addEventListener("submit", function (e) {
   e.preventDefault(); msg($("connmsg"), "Connecting…"); $("connect").disabled = true;
-  api("/api/connect", { host: $("host").value, password: $("pw").value }).then(function (j) { $("pw").value = ""; setConnected(true, j.device, j.problems); })
+  api("/api/connect", { host: $("host").value, password: $("pw").value, remember: $("remember").checked }).then(function (j) { if (!$("remember").checked) $("pw").value = ""; setConnected(true, j.device, j.problems, j.nativeProblems); })
     .catch(function (err) { setConnected(false); msg($("connmsg"), err.message, "err"); }).then(function () { $("connect").disabled = false; });
 });
 
@@ -745,6 +881,13 @@ function startInstall() {
     var r = p.maybeMore ? " MPC will restart at least once, and once more for each plugin with an older installer that restarts MPC by itself (the log shows which)."
           : p.restarts > 1 ? " MPC will restart " + p.restarts + " times, because some of the installers restart it themselves." : " MPC will restart once.";
     S.mode = "install"; $("dlgsave").hidden = false; text($("dlgtitle"), "Install on your MPC?"); text($("yes"), "Install");
+    if (s.method === "vst2") {
+      var vd = S.vdrives.filter(function (x) { return x.path === s.drive; })[0];
+      r = " Plugins from the catalog are converted for MPC OS 3.10.1 on the way. MPC keeps running" + (s.restart ? " until the end, then restarts once." : ": find them under External Plugins in its plugin browser.");
+      $("dlgsave").hidden = !s.restart;
+      text($("dlgtxt"), "About to install: " + names + " to " + (vd ? vd.label : s.drive) + " (VST2 Plugins)." + r);
+      $("dlg").showModal(); return;
+    }
     var notes = s.catalog.map(function (id) { return osNote(S.cat.filter(function (x) { return x.id === id; })[0]); }).filter(Boolean);
     if (notes.some(function (n) { return n.level === "err"; })) text($("yes"), "Install anyway");
     if (s.register) r += " Every plugin folder on the device is then registered with MPC (its settings are backed up first).";
@@ -773,9 +916,14 @@ $("resetf").addEventListener("click", function () {
   S.f = { q: "", kind: S.f.kind, dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
 });
 $("no").addEventListener("click", function () { $("dlg").close(); });
-function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
+function chosenDev() { return devItems().filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
 $("rm").addEventListener("click", function () {
   var ch = chosenDev(); S.mode = "remove"; $("dlgsave").hidden = false;
+  if (S.method === "vst2") {
+    $("dlgsave").hidden = true; text($("dlgtitle"), "Remove from your MPC?"); text($("yes"), "Remove");
+    text($("dlgtxt"), "About to delete: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + ". Each plugin's whole folder goes, including any samples or other files it came with. MPC keeps running; remove the plugin from any track that uses it first.");
+    $("dlg").showModal(); return;
+  }
   text($("dlgtitle"), "Remove from your MPC?"); text($("yes"), "Remove");
   var plugs = ch.filter(function (p) { return !p.addin; }), adds = ch.filter(function (p) { return p.addin; });
   text($("dlgtxt"), "About to remove: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + "." +
@@ -813,16 +961,16 @@ $("yes").addEventListener("click", function () {
     return;
   }
   if (S.mode === "remove") {
-    var items = chosenDev().map(function (p) { return { root: p.root, folder: p.folder }; });
+    var items = chosenDev().map(function (p) { return { root: p.root, folder: p.folder, native: !!p.native }; });
     S.running = true; refresh(); msg($("rmresult"), "Working…"); var rl = $("rmlog"); rl.hidden = false; rl.textContent = "";
-    api("/api/remove", { items: items, confirm: true }).then(function () { poll(0, $("rmlog"), $("rmresult"), "Done. MPC is starting again: the plugins are gone from its list."); })
+    api("/api/remove", { items: items, confirm: true }).then(function () { poll(0, $("rmlog"), $("rmresult"), S.method === "vst2" ? "Done. The folders are deleted." : "Done. MPC is starting again: the plugins are gone from its list."); })
       .catch(function (e) { S.running = false; refresh(); msg($("rmresult"), e.message, "err"); });
     return;
   }
   var s = selection(); s.confirm = true; S.after = { cat: s.catalog.slice(), ups: s.uploads.slice(), done: false, pending: true };
   S.running = true; refresh(); msg($("result"), "Working…"); var log = $("log"); log.hidden = false; log.textContent = "";
   scrollToProgress();
-  api("/api/install", s).then(function () { poll(0, $("log"), $("result"), "Done. MPC is starting again: the new plugins are in the plugin list."); }).catch(function (e) { S.running = false; refresh(); msg($("result"), e.message, "err"); });
+  api("/api/install", s).then(function () { poll(0, $("log"), $("result"), s.method === "vst2" ? (s.restart ? "Done. MPC is restarting: the new plugins are under External Plugins." : "Done. On the MPC, the new plugins are under External Plugins in the plugin browser.") : "Done. MPC is starting again: the new plugins are in the plugin list."); }).catch(function (e) { S.running = false; refresh(); msg($("result"), e.message, "err"); });
 });
 function scrollToProgress() {
   var t = $("result"); if (!t) return;
@@ -833,8 +981,12 @@ function poll(since, log, resultEl, doneText) {
     if (j.lines && j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
     if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
     S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
-    if (S.after && S.after.pending) { S.after.pending = false; S.after.done = j.state === "done"; }
-    api("/api/state").then(function (st) { if (st.device) { S.problems = st.problems || []; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); } });
+    if (S.after && S.after.pending) { S.after.pending = false; S.after.done = j.state === "done"; S.after.ok = j.ok || null; }
+    api("/api/state").then(function (st) {
+      S.ups = st.uploads || []; drawUps();   // an uploaded zip that installed is gone; one that failed stays, still ticked
+      if (st.device) { S.problems = st.problems || []; S.nprob = st.nativeProblems || []; S.vdrives = st.device.vdrives || S.vdrives; S.info = st.device; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); if (S.method === "vst2") drawVWhere(); }
+      refresh();
+    });
     refresh();
   }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });
 }
@@ -874,9 +1026,19 @@ function pref(k, v) {
   });
   apply();
 })();
+// Remember me: fill in what was saved (the app keeps it, on this device only)
+api("/api/remember").then(function (r) {
+  if (!r.remember) return;
+  $("remember").checked = true;
+  if (!$("host").value) $("host").value = r.host || "";
+  if (!$("pw").value) $("pw").value = r.password || "";
+}).catch(function () {});
+$("remember").addEventListener("change", function () {   // unticking forgets straight away; ticking saves on the next connect
+  if (!$("remember").checked) api("/api/remember", { forget: true }).catch(function () {});
+});
 api("/api/state").then(function (st) {
   S.ups = st.uploads || []; drawUps();
-  if (st.connected) setConnected(true, st.device, st.problems); else { refresh(); loadCatalog(); }
+  if (st.connected) setConnected(true, st.device, st.problems, st.nativeProblems); else { refresh(); loadCatalog(); }
 }).catch(function () { msg($("connmsg"), "This page needs the link the app printed (it contains the access token).", "err"); });
 </script>
 </body>

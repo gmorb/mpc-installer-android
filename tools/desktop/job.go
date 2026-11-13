@@ -21,6 +21,20 @@ type Job struct {
 	State  string // running, done, failed
 	Lines  []string
 	Result string
+	OK     []string // packages that installed: "catalog:<id>" or "upload:<handle>" (the page unticks them, uploads are dropped)
+}
+
+// ok records that a package installed.
+func (j *Job) ok(p *Package) {
+	j.mu.Lock()
+	j.OK = append(j.OK, p.Key)
+	j.mu.Unlock()
+}
+
+func (j *Job) okList() []string {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return append([]string{}, j.OK...)
 }
 
 func (j *Job) log(format string, a ...any) {
@@ -70,6 +84,17 @@ type InstallOpts struct {
 	// every location gets into MPC's plugin list, nothing on the device needed. Like vstscanner.sh, but it only adds and fixes
 	// entries (and backs up MPC.settings) instead of rebuilding the list.
 	Register bool
+	// Restart restarts MPC after a VST2 Plugins install (RunNativeInstall), so it lists the new plugins straight away.
+	Restart bool
+	// OnOK is told about each package as soon as it is installed (the server drops an uploaded zip then).
+	OnOK func(*Package)
+}
+
+func (o InstallOpts) done(j *Job, p *Package) {
+	j.ok(p)
+	if o.OnOK != nil {
+		o.OnOK(p)
+	}
 }
 
 func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, refresh func(), opts ...InstallOpts) (err error) {
@@ -108,14 +133,21 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 			if err != nil {
 				return fmt.Errorf("%s: %w", c.Name, err)
 			}
+			p.Key = "catalog:" + c.ID
 			j.log("%s %s downloaded and checked against the catalog's sha256.", c.Name, c.Version)
 			pkgs = append(pkgs, p)
 		} else {
+			it.Pkg.Key = "upload:" + it.Pkg.Handle
 			pkgs = append(pkgs, it.Pkg)
 		}
 	}
 	if len(pkgs) == 0 {
 		return errors.New("nothing selected")
+	}
+	for _, p := range pkgs {
+		if p.Native {
+			return fmt.Errorf("%s is made for MPC OS 3.10.1's %s folder (inMusic's SDK format): choose \"%s folder\" as the install method", p.Title, VST2Dir, VST2Dir)
+		}
 	}
 	for _, p := range pkgs { // a zip dropped in by hand may be for the other generation
 		for _, m := range p.Plugins {
@@ -202,7 +234,15 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	}
 	script := installScriptWith(root.Path, dev.cfg.AddinsDir, tmp, pkgs, dev.Info.Settings, syncRoots)
 	j.log("Installing (MPC is stopped once and started again at the end)")
-	code, rerr := dev.Run(script, nil, func(l string) { j.log("  %s", l) })
+	code, rerr := dev.Run(script, nil, func(l string) {
+		if n, ok := strings.CutPrefix(l, "@@ok "); ok { // the script says a package is in place
+			if i, err := strconv.Atoi(strings.TrimSpace(n)); err == nil && i >= 1 && i <= len(pkgs) {
+				o.done(j, pkgs[i-1])
+			}
+			return
+		}
+		j.log("  %s", l)
+	})
 	if rerr != nil {
 		cleanup()
 		return rerr
@@ -238,8 +278,12 @@ func installScriptWith(synths, addins, tmp string, pkgs []*Package, settings, sy
 		return `"$SYN"`
 	}
 	record := func(p *Package) {
+		for i := range pkgs {
+			if pkgs[i] == p {
+				w("  echo '@@ok %d'", i+1) // read by RunInstall, not shown
+			}
+		}
 		if p.Addin {
-			w("  :") // its folder records the version; a then-branch may not be empty
 			return
 		}
 		for _, m := range p.Plugins {
