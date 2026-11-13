@@ -151,6 +151,77 @@ type Device struct {
 	Info   DeviceInfo
 	// for reconnect: kept in memory for this connection only, never written anywhere
 	host, password, fp string
+	lastOK             time.Time // when the device last answered (guarded by mu): a connection idle longer is checked first
+}
+
+// How a connection that went stale is noticed. Restarting MPC can take the MPC's Wi-Fi down for a moment, and a phone can lose
+// its network while the app is in the background: the connection then looks open but nothing comes back, and opening a session
+// on it would wait forever. So a connection idle for a while is asked to answer first, opening a session has a time limit, a
+// watchdog closes a connection that stops answering in the middle of a long command, and reconnecting keeps trying while the
+// MPC comes back. Variables, so the tests can shorten them.
+var (
+	idleCheck      = 2 * time.Second  // a connection idle longer than this is asked to answer before it is used
+	answerWait     = 6 * time.Second  // how long it has to answer, and to open a session
+	watchEvery     = 15 * time.Second // the watchdog's interval during long commands
+	reconnectFor   = 60 * time.Second // how long reconnecting keeps trying (the MPC's Wi-Fi coming back after a restart)
+	reconnectPause = 3 * time.Second
+)
+
+// answers reports whether the device replies to a keepalive request within wait. Any reply counts, even "unsupported".
+func answers(c *ssh.Client, wait time.Duration) bool {
+	done := make(chan error, 1)
+	go func() { _, _, err := c.SendRequest("keepalive@openssh.com", true, nil); done <- err }()
+	select {
+	case err := <-done:
+		return err == nil
+	case <-time.After(wait):
+		return false
+	}
+}
+
+// watch closes c when it stops answering twice in a row, so a command running on a dead connection fails instead of hanging.
+func watch(c *ssh.Client) {
+	every := watchEvery
+	closed := make(chan struct{})
+	go func() { c.Wait(); close(closed) }()
+	go func() {
+		missed := 0
+		for {
+			select {
+			case <-closed:
+				return
+			case <-time.After(every):
+			}
+			if answers(c, every) {
+				missed = 0
+			} else if missed++; missed >= 2 {
+				c.Close()
+				return
+			}
+		}
+	}()
+}
+
+// openSession opens a session on c within answerWait. On a connection that went stale it gives up and closes c.
+func openSession(c *ssh.Client) (*ssh.Session, error) {
+	type res struct {
+		s   *ssh.Session
+		err error
+	}
+	done := make(chan res, 1)
+	go func() { s, err := c.NewSession(); done <- res{s, err} }()
+	select {
+	case r := <-done:
+		return r.s, r.err
+	case <-time.After(answerWait):
+		c.Close()
+		go func() {
+			if r := <-done; r.s != nil {
+				r.s.Close()
+			}
+		}()
+		return nil, errors.New("the connection to the device stopped answering")
+	}
 }
 
 var hostRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$`)
@@ -208,7 +279,8 @@ func Dial(host, password string, cfg Config) (*Device, error) {
 		}
 		return nil, fmt.Errorf("cannot log in to %s: %w", host, err)
 	}
-	d := &Device{client: c, cfg: cfg, host: host, password: password, fp: fp}
+	watch(c)
+	d := &Device{client: c, cfg: cfg, host: host, password: password, fp: fp, lastOK: time.Now()}
 	if err := d.readInfo(host, fp); err != nil {
 		c.Close()
 		return nil, err
@@ -256,26 +328,38 @@ func (w *lineWriter) flush() {
 
 // Run executes cmd on the device; stdout and stderr lines go to onLine. It returns the exit status.
 // reconnect replaces a dropped SSH connection with a new one to the same device, after checking that it presents the same
-// host key (a phone that changed networks must not end up talking to something else at that address).
+// host key (a phone that changed networks must not end up talking to something else at that address). It keeps trying for
+// reconnectFor, since the MPC's Wi-Fi can take a little while to come back after MPC restarts.
 func (d *Device) reconnect() error {
 	var fp string
+	keyChanged := false
 	conf := &ssh.ClientConfig{
 		User: d.cfg.User, Auth: authMethods(d.password), Timeout: 10 * time.Second,
 		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
 			fp = ssh.FingerprintSHA256(key)
 			if d.fp != "" && fp != d.fp {
+				keyChanged = true
 				return fmt.Errorf("the device at %s now has a different key (%s, was %s)", d.host, fp, d.fp)
 			}
 			return nil
 		},
 	}
-	c, err := ssh.Dial("tcp", net.JoinHostPort(d.host, d.cfg.Port), conf)
+	var c *ssh.Client
+	var err error
+	for until := time.Now().Add(reconnectFor); ; {
+		if c, err = ssh.Dial("tcp", net.JoinHostPort(d.host, d.cfg.Port), conf); err == nil || keyChanged || time.Now().After(until) {
+			break
+		}
+		time.Sleep(reconnectPause)
+	}
 	if err != nil {
 		return fmt.Errorf("cannot reconnect to %s: %w", d.host, err)
 	}
+	watch(c)
 	d.mu.Lock()
 	old := d.client
 	d.client = c
+	d.lastOK = time.Now()
 	d.mu.Unlock()
 	if old != nil {
 		old.Close()
@@ -295,18 +379,33 @@ func connectionLost(err error) bool {
 	if errors.As(err, &ee) {
 		return false
 	}
+	var em *ssh.ExitMissingError // the session ended without a status: the connection went away under it
+	if errors.As(err, &em) {
+		return true
+	}
 	var ne net.Error
 	return errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) || errors.As(err, &ne) ||
 		strings.Contains(err.Error(), "connection") || strings.Contains(err.Error(), "broken pipe")
 }
 
 func (d *Device) Run(cmd string, stdin io.Reader, onLine func(string)) (int, error) {
-	s, err := d.conn().NewSession()
-	if err != nil && d.host != "" { // the connection is gone and nothing has run yet: reconnect once and go on
+	c := d.conn()
+	var s *ssh.Session
+	var err error
+	d.mu.Lock()
+	idle := time.Since(d.lastOK) > idleCheck
+	d.mu.Unlock()
+	if d.host != "" && idle && !answers(c, answerWait) { // went stale while idle (MPC restarted, the phone slept): start afresh
+		c.Close()
+		err = errors.New("the connection to the device stopped answering")
+	} else {
+		s, err = openSession(c)
+	}
+	if err != nil && d.host != "" { // the connection is gone and nothing has run yet: reconnect and go on
 		if rerr := d.reconnect(); rerr != nil {
 			return -1, fmt.Errorf("%v; %w", err, rerr)
 		}
-		s, err = d.conn().NewSession()
+		s, err = openSession(d.conn())
 	}
 	if err != nil {
 		return -1, err
@@ -320,6 +419,11 @@ func (d *Device) Run(cmd string, stdin io.Reader, onLine func(string)) (int, err
 	}
 	err = s.Run(cmd)
 	lw.flush()
+	if !connectionLost(err) {
+		d.mu.Lock()
+		d.lastOK = time.Now()
+		d.mu.Unlock()
+	}
 	var ee *ssh.ExitError
 	if errors.As(err, &ee) {
 		return ee.ExitStatus(), nil

@@ -121,11 +121,7 @@ func RunNativeInstall(dev *Device, drive VDrive, items []Item, workDir string, j
 		}
 	}
 	if o.Restart && len(failed) < total {
-		j.log("Restarting MPC so it lists the new plugins (unsaved work in the open project is lost)")
-		code, rerr := dev.Run(`SVC=acvs; systemctl cat acvs >/dev/null 2>&1 || ! systemctl cat inmusic-mpc >/dev/null 2>&1 || SVC=inmusic-mpc; systemctl restart $SVC`, nil, func(l string) { j.log("  %s", l) })
-		if rerr != nil || code != 0 {
-			j.log("MPC could not be restarted from here (status %d): restart it on the MPC to see the new plugins.", code)
-		}
+		RestartMPC(dev, j)
 	}
 	j.log("On the MPC, the plugins are under External Plugins in the plugin browser. Preferences > Enhancements (Beta) > Enable Enhancements and External Plugin Support must be on.")
 	if len(failed) > 0 {
@@ -201,8 +197,9 @@ func copyNativeFolder(dev *Device, drive VDrive, f NFolder, j *Job) error {
 }
 
 // RunNativeRemove deletes plugin folders from VST2 Plugins folders (MPC OS 3.10.1+). A folder there is the whole plugin, so it goes
-// as a whole, Content (samples and the like it shipped with) included. MPC is not stopped: it forgets a plugin whose folder is gone.
-func RunNativeRemove(dev *Device, plans []VPlugin, j *Job, refresh func()) (err error) {
+// as a whole, Content (samples and the like it shipped with) included. MPC keeps running and forgets a plugin whose folder is gone;
+// with restart it is restarted afterwards, which also unloads one that was still loaded on a track.
+func RunNativeRemove(dev *Device, plans []VPlugin, j *Job, refresh func(), restart bool) (err error) {
 	defer func() {
 		if refresh != nil {
 			refresh()
@@ -228,6 +225,9 @@ func RunNativeRemove(dev *Device, plans []VPlugin, j *Job, refresh func()) (err 
 			continue
 		}
 		j.log("Removed %s", dir)
+	}
+	if restart && len(failed) < len(plans) {
+		RestartMPC(dev, j)
 	}
 	if len(failed) > 0 {
 		return fmt.Errorf("%d could not be removed: %s", len(failed), strings.Join(failed, ", "))

@@ -276,7 +276,7 @@ func TestVST2InstallOnAnMPC3101(t *testing.T) {
 	}
 	// removing deletes the folder, MPC is not stopped
 	j = &Job{ID: "r", State: "running"}
-	if err := RunNativeRemove(d, d.Info.VPlugins[:1], j, nil); err != nil {
+	if err := RunNativeRemove(d, d.Info.VPlugins[:1], j, nil, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(dir); err == nil {

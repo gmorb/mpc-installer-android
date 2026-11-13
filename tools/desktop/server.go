@@ -740,6 +740,7 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 			Native bool   `json:"native"` // a folder in a VST2 Plugins folder; Root is then the drive
 		} `json:"items"`
 		Confirm bool `json:"confirm"`
+		Restart bool `json:"restart"` // VST2 Plugins folders: restart MPC afterwards (the Synths way always restarts it)
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
 		fail(w, 400, "bad request")
@@ -793,7 +794,7 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 			if a.dev == dev {
 				dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
 			}
-		})
+		}, in.Restart)
 		writeJSON(w, 200, map[string]string{"job": j.ID})
 		return
 	}

@@ -171,7 +171,7 @@ func RunRemove(dev *Device, plans []RemovePlan, j *Job, refresh func()) (err err
 		return fmt.Errorf("cannot prepare the device (status %d): %v %s", code, rerr, strings.Join(out, " "))
 	}
 	j.log("Removing %d item(s) (MPC is stopped once and started again at the end)", len(plans))
-	code, rerr = dev.Run(removeScript(tmp, dev.Info.Settings, plans), nil, func(l string) { j.log("  %s", l) })
+	code, rerr = dev.RunToEnd(removeScript(tmp, dev.Info.Settings, plans), func(l string) { j.log("  %s", l) }, j.log)
 	if rerr != nil {
 		dev.Run("rm -rf "+shQuote(tmp), nil, nil)
 		return rerr

@@ -122,7 +122,7 @@ func RunRegister(dev *Device, j *Job, refresh func()) (err error) {
 		return err
 	}
 	j.log("Registering plugin folders (MPC is stopped once and started again at the end)")
-	code, rerr := dev.Run(registerScript(tmp, dev.Info.Settings, dev.syncRoots()), nil, func(l string) { j.log("  %s", l) })
+	code, rerr := dev.RunToEnd(registerScript(tmp, dev.Info.Settings, dev.syncRoots()), func(l string) { j.log("  %s", l) }, j.log)
 	if rerr != nil {
 		dev.Run("rm -rf "+shQuote(tmp), nil, nil)
 		return rerr

@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -30,6 +31,12 @@ type fakeDevice struct {
 	// dropOnCopy > 0 cuts the SSH connection when a copy (tar -xf) starts, that many times, like a phone dropping the app's
 	// network mid-install
 	dropOnCopy atomic.Int32
+	// stallAfter: after a command containing this text, the connection it ran on stops answering without closing (requests and
+	// new sessions get no reply), like an MPC whose Wi-Fi went down and came back while MPC restarted
+	stallAfter atomic.Pointer[string]
+	// dropDuring: a command containing this text keeps running on the device, but the connection is cut shortly after it
+	// starts, like an MPC whose Wi-Fi goes down when MPC is stopped
+	dropDuring atomic.Pointer[string]
 }
 
 func newFakeDevice(t *testing.T) *fakeDevice { t.Helper(); return newFake(t, false) }
@@ -51,9 +58,14 @@ func newFake(t *testing.T, open bool) *fakeDevice {
 	}
 	shim("uname", "echo armv7l")
 	shim("id", "echo 0")
-	shim("pidof", "exit 1")
+	pid := filepath.Join(dir, "mpc.pid") // written by the systemctl shim while "MPC" runs
+	shim("pidof", `cat `+pid+` 2>/dev/null || exit 1`)
 	// `systemctl cat <unit>` succeeds only for the unit named in the file "svc" (default acvs; Hakai uses inmusic-mpc); other calls are logged
-	shim("systemctl", `if [ "$1" = cat ]; then [ "$2" = "$(cat `+filepath.Join(fd.dir, "svc")+` 2>/dev/null || echo acvs)" ]; exit; fi; echo "$1 $2" >> `+fd.mpcLog)
+	// options such as --no-block are left out of the log; start and restart give "MPC" a new process number, stop ends it
+	shim("systemctl", `while [ "${1#--}" != "$1" ]; do shift; done
+if [ "$1" = cat ]; then [ "$2" = "$(cat `+filepath.Join(fd.dir, "svc")+` 2>/dev/null || echo acvs)" ]; exit; fi; echo "$1 $2" >> `+fd.mpcLog+`
+[ "$1" = stop ] && [ -f `+filepath.Join(dir, "slowstop")+` ] && sleep 1
+case "$1" in start|restart) echo $(( $(cat `+pid+`.n 2>/dev/null || echo 100) + 1 )) > `+pid+`.n; cp `+pid+`.n `+pid+` ;; stop) rm -f `+pid+` ;; esac`)
 
 	_, priv, _ := ed25519.GenerateKey(rand.Reader)
 	signer, _ := ssh.NewSignerFromKey(priv)
@@ -125,8 +137,18 @@ func (fd *fakeDevice) serve(nc net.Conn, conf *ssh.ServerConfig) {
 	if err != nil {
 		return
 	}
-	go ssh.DiscardRequests(reqs)
+	var stalled atomic.Bool
+	go func() {
+		for r := range reqs {
+			if !stalled.Load() && r.WantReply {
+				r.Reply(false, nil)
+			}
+		}
+	}()
 	for nch := range chans {
+		if stalled.Load() {
+			continue // never answered: the client's request waits
+		}
 		if nch.ChannelType() != "session" {
 			nch.Reject(ssh.UnknownChannelType, "no")
 			continue
@@ -146,6 +168,10 @@ func (fd *fakeDevice) serve(nc net.Conn, conf *ssh.ServerConfig) {
 					return
 				}
 				r.Reply(true, nil)
+				if m := fd.dropDuring.Load(); m != nil && strings.Contains(cmd, *m) {
+					fd.dropDuring.Store(nil)
+					go func() { time.Sleep(150 * time.Millisecond); nc.Close() }()
+				}
 				c := exec.Command("sh", "-c", cmd)
 				// the addin installer edits systemd units under SYSTEMD_ROOT and logs its systemctl calls instead of making them
 				c.Env = append(os.Environ(), "PATH="+fd.shims+":"+os.Getenv("PATH"), "ADDIN_INSTALL_TEST=1",
@@ -160,6 +186,10 @@ func (fd *fakeDevice) serve(nc net.Conn, conf *ssh.ServerConfig) {
 					}
 				}
 				ch.SendRequest("exit-status", false, ssh.Marshal(struct{ C uint32 }{uint32(code)}))
+				if m := fd.stallAfter.Load(); m != nil && strings.Contains(cmd, *m) {
+					fd.stallAfter.Store(nil)
+					stalled.Store(true)
+				}
 				return
 			}
 		}()

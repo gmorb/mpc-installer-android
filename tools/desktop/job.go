@@ -234,7 +234,7 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	}
 	script := installScriptWith(root.Path, dev.cfg.AddinsDir, tmp, pkgs, dev.Info.Settings, syncRoots)
 	j.log("Installing (MPC is stopped once and started again at the end)")
-	code, rerr := dev.Run(script, nil, func(l string) {
+	code, rerr := dev.RunToEnd(script, func(l string) {
 		if n, ok := strings.CutPrefix(l, "@@ok "); ok { // the script says a package is in place
 			if i, err := strconv.Atoi(strings.TrimSpace(n)); err == nil && i >= 1 && i <= len(pkgs) {
 				o.done(j, pkgs[i-1])
@@ -242,7 +242,7 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 			return
 		}
 		j.log("  %s", l)
-	})
+	}, j.log)
 	if rerr != nil {
 		cleanup()
 		return rerr
