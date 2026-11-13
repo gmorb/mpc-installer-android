@@ -8,7 +8,7 @@ Wi-Fi, tick plugins from the catalog, press Install.
 - Installs to a card, USB drive or SSD under `/media` (it can create the `Synths` folder for you); the MPC's internal flash is
   hidden behind a wear warning. Registers the plugins with MPC by itself: nothing to put on the device.
 - Also: remove plugins (your own files are kept), repair a plugin list that lost entries, clean up old settings backups, dark mode,
-  plugin banners, and it reconnects and copies again if the phone cuts the connection mid-copy.
+  plugin banners (tap one for the full details), community likes and works-for-me reports with ranking, and it reconnects and copies again if the phone cuts the connection mid-copy.
 - Same program, same release zips and same `install.sh` as the desktop installer (`tools/desktop`); only the wrapper is new.
 
 ## MPC OS 3.10.1: the VST2 Plugins folder

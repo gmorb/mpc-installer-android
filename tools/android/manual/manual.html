@@ -30,13 +30,13 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </style></head><body>
 
 <section class="cover">
-<div class="ver">User manual · app version 1.6.0</div>
+<div class="ver">User manual · app version 1.7.0</div>
 <h1>MPC Installer<br>for Android</h1>
 <p class="sub">Install, update and remove VST plugins on an Akai MPC, Force or MPC Sample from your phone: into the VST2 Plugins folder of MPC OS 3.10.1 and later, or the Synths folder of a modded MPC.</p>
 <div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
 <h3>Contents</h3>
 <ol class="toc">
-<li>What you need</li><li>Install the app</li><li>Connect to your MPC</li><li>Choose plugins</li><li>Choose the method and where to install</li><li>Install</li><li>Remove plugins, and move old ones to VST2 Plugins</li><li>Something missing from the plugin list?</li><li>Clean up old backups</li><li>Dark mode and banners</li><li>Troubleshooting</li><li>Good to know</li>
+<li>What you need</li><li>Install the app</li><li>Connect to your MPC</li><li>Choose plugins, likes and reports</li><li>Choose the method and where to install</li><li>Install</li><li>Remove plugins, and move old ones to VST2 Plugins</li><li>Something missing from the plugin list?</li><li>Clean up old backups</li><li>Dark mode and banners</li><li>Troubleshooting</li><li>Good to know</li>
 </ol>
 </section>
 
@@ -73,10 +73,13 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <p><b>Remember this MPC</b> saves the address and password on this phone only, inside the app's own storage, and only after they connected. Untick it to forget them straight away. Without it, nothing about your MPC is saved.</p>
 <p>The app shows what it found: the MPC OS version, the plugins already on it, and the places plugins can go. It also shows the device's <b>key fingerprint</b>. If it changes between sessions for the same MPC, be careful: it can mean you are talking to a different device.</p>
 
-<h2>4. Choose plugins</h2>
+<h2>4. Choose plugins, likes and reports</h2>
 <div class="pair"><figure><img src="choose-light.png"><figcaption>Step 2: choose plugins (example data)</figcaption></figure><figure><img src="choose-dark.png"><figcaption>The same page in dark mode</figcaption></figure></div>
 <p><b>MPC / Force or MPC Sample.</b> The switch above the tabs picks which device the list is for, as on the catalog site. <i>MPC / Force</i> lists everything except what is made only for the MPC Sample. <i>MPC Sample</i> lists what is made for the Sample (tagged <i>MPC Sample only</i>, such as addins for its screen) and what someone has verified on one (<i>Verified on MPC Sample</i>); a plugin that only has a 64-bit build is not enough to be listed there. When you connect, the switch follows your device, and the app refuses a Sample-only plugin on any other MPC.</p>
 <p>The list is the catalog's newest stable release of every downloadable plugin. You can browse it and tick plugins before connecting; connect to see which are already on your MPC and to install (the bottom bar's <b>Connect to install</b> takes you to step 1). Use the tabs (Instruments, MIDI, Effects, Addins, All), the search box, the developer filter, the sort and the "show" filter (not on the device, on the device, updates available, only the ones you ticked) to find what you want. Tick the plugins; what you ticked stays ticked while you filter. The list scrolls inside its own box, showing two or three plugins at a time, so the rest of the page is one short swipe below it. A bar at the bottom shows the count and an <b>Install</b> button.</p>
+<p><b>Likes and reports.</b> Under each plugin's name are three counts from the catalog's community: <b>✓</b> how many people report it working on their MPC, <b>♥</b> likes, and <b>↓</b> downloads. <b>Sort by</b> starts on <i>Recommended</i>, the catalog site's ranking: featured plugins first, then the ones verified by their author and the ones most people report working on the newest version, with likes counting a little. You can also sort by <i>Most reported working</i>, <i>Most liked</i> or <i>Most downloaded</i>. Reports are people's say-so, not hardware verification. If the counts cannot be fetched, the list still works, just without them. In the <i>MPC Sample</i> view, a plugin someone has reported working on an MPC Sample is listed too.</p>
+<div class="pair"><figure><img src="details.png"><figcaption>Tap a banner or <i>See full details</i> (example data)</figcaption></figure></div>
+<p><b>Full details.</b> Tap a plugin's banner, or <b>See full details</b> under its description, to open it full screen: the whole banner, the complete description (the list cuts it to two lines), the version, licence, size, which devices it is for and has been tested on, and which MPC models and OS versions people have reported it working on. <b>Tick to install</b> ticks it from there; <b>Close</b>, the ✕ or the back button takes you back to the list. To like a plugin or report it working, use the link to its page on the catalog site (open-mpc.github.io), where you sign in with GitHub.</p>
 <p>You can also add your own release zips with <b>Add plugin zips</b>, which opens the phone's file picker. A zip is checked before it is accepted. Both kinds work: a release zip from the community catalog, and a zip made with inMusic's MPC Plugin Builder SDK (tagged <i>MPC OS 3.10.1 format</i>). Once a zip of yours has installed, the app drops it from the list; one that failed stays, so you can try again.</p>
 <p>Plugins already on the device are flagged, and so are updates. Catalog downloads are checked against the catalog's checksums before anything is copied; a mismatch installs nothing.</p>
 
@@ -146,7 +149,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <h2>10. Dark mode and banners</h2>
 <ul>
 <li><b>Appearance:</b> the three buttons in the bar at the top choose <i>Match the system</i> (half-filled circle), <i>Light</i> (sun) or <i>Dark</i> (moon). The phone's status and navigation bars follow your choice, and the app remembers it.</li>
-<li><b>Banners:</b> each catalog plugin shows its banner picture in the list. The pictures come from the web, so turn them off with <b>Show banners</b> if you are on mobile data. This is remembered too.</li>
+<li><b>Banners:</b> each catalog plugin shows its banner picture in the list; tap it to see it full size. The pictures come from the web, so turn them off with <b>Show banners</b> if you are on mobile data. This is remembered too.</li>
 </ul>
 
 <h2>11. Troubleshooting</h2>
@@ -174,5 +177,5 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
 <li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
 </ul>
-<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.6.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.7.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
 </body></html>
