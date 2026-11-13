@@ -100,7 +100,7 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        // The page's preferences (appearance, banners) live here: its address, and with it the WebView's storage, changes on
+        // The page's preferences (appearance, banners, MPC or MPC Sample, the restart choices) live here: its address, and with it the WebView's storage, changes on
         // every start. Only the page this app loads (127.0.0.1) runs in this WebView; other links open in the phone's browser.
         web.addJavascriptInterface(new PageBridge(), "MPCApp");
         web.setWebChromeClient(new WebChromeClient() {
@@ -145,7 +145,7 @@ public class MainActivity extends Activity {
     /** window.MPCApp on the page: get and set a few named preferences; setting the appearance recolours the bars. */
     private class PageBridge {
         private boolean known(String k) {
-            return "theme".equals(k) || "banners".equals(k);
+            return "theme".equals(k) || "banners".equals(k) || "platform".equals(k) || "restart".equals(k) || "rmrestart".equals(k);
         }
 
         @JavascriptInterface

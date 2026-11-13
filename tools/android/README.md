@@ -25,7 +25,8 @@ app connects it reads the running MPC's version (`/tmp/com.akaipro.mpc.version`)
   `file32` or `file64`) and `version.xml`, loses `plugin-meta.xml` and `mpc-plugin.json`, and is named `<Manufacturer> - VST - <Name>`. The
   library's ELF header must match the MPC (32-bit or 64-bit). Zips made with the SDK go in as they are.
 - Each folder is streamed as a tar into `<drive>/.mpc-installer-stage`, moved into `VST2 Plugins` (an older copy is replaced, and put back
-  if the new one's file sizes do not match), and MPC keeps running. **Restart MPC afterwards** is optional.
+  if the new one's file sizes do not match), and MPC keeps running. **Restart MPC afterwards** is optional and remembered; removing offers it too (ticked by default).
+  After a restart the app waits for MPC to come back and reconnects by itself if the restart took the connection down.
 - Removing deletes the plugin's folder. Registering and MPC.settings backups are for the Synths method only.
 - Plugins already in a Synths folder on a 3.10.1+ MPC are offered under Device tools (**Move old plugins to VST2 Plugins**,
   `tools/desktop/migrate.go`): each folder is converted on the device (`cp -a` into the staging folder, `plugin.json` and `version.xml`
@@ -74,7 +75,9 @@ connection to the MPC, the same release zips and `install.sh`. Only the wrapper 
 - `InstallService` (a foreground service, type dataSync, with a "MPC Installer is running" notification) runs while the app is
   open. Without it, Android 15+ cuts the network of an app that is not in front, and a copy failed with "software caused
   connection abort" when the person switched apps (user report, 2026-10-13). The installer also reconnects and copies again
-  once when the connection drops during a copy (`tools/desktop`).
+  once when the connection drops during a copy, checks an idle connection still answers before using it (reconnecting for up
+  to a minute when it does not, as after MPC restarts), and runs scripts that stop and start MPC so they finish on the device
+  even if the connection drops (`tools/desktop`).
 - Appearance: the page's three-way control (Match the system, Light, Dark) is stored by the app (`window.MPCApp`, SharedPreferences),
   not in the WebView's storage, because the page's address (a new port each start) and with it localStorage changes every launch.
   Choosing Light or Dark also recolours the status and navigation bars. With Match the system, the page follows `data-sys`

@@ -241,8 +241,8 @@ fieldset.method legend { font-size:14px; font-weight:600; color:var(--ink); padd
 @media (min-width:620px) { .methods { grid-template-columns:1fr 1fr; } }
 #conn .remember { grid-column:1 / -1; margin-top:0; }
 #conn .remember small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
-#restartl { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 16px; }
-#restartl small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
+#restartl, #dlgrestartl { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 16px; }
+#restartl small, #dlgrestartl small { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
 #vopts:not(:empty) { display:grid; gap:8px; }
 #vdrives { margin-top:12px; } #vdrives .small { margin:0 0 8px; }
 #vdrivelist li { flex-wrap:wrap; align-items:center; } #vdrivelist .t { flex:1 1 180px; min-width:0; cursor:default; }
@@ -320,7 +320,7 @@ header.appbar .seg button { width:32px; height:28px; }
 .lede { margin:18px 0 22px; color:var(--ink-2); font-size:15.5px; max-width:56ch; }
 
 /* surfaces: a hairline ring and a soft shadow for elevation, borders kept for inputs and selected states */
-ul.list, .devsum, #regboxl, #restartl, .toolbox .group, .whereopt, .ktabs button, .seg { border-color:transparent; box-shadow:var(--e1); }
+ul.list, .devsum, #regboxl, #restartl, #dlgrestartl, .toolbox .group, .whereopt, .ktabs button, .seg { border-color:transparent; box-shadow:var(--e1); }
 .whereopt:has(input:checked) { box-shadow:0 0 0 1.5px var(--accent), 0 0 0 5px var(--accent-soft); }
 .note { border-color:transparent; box-shadow:inset 0 0 0 1px var(--ring); }
 details.collapse ul.list { box-shadow:inset 0 0 0 1px var(--ring); }
@@ -586,6 +586,7 @@ dialog.sheet::backdrop { background:rgb(8 8 10 / .72); backdrop-filter:blur(6px)
 <dialog id="dlg">
   <h3 id="dlgtitle">Install on your MPC?</h3>
   <p id="dlgtxt"></p>
+  <label class="opt" id="dlgrestartl" hidden><input type="checkbox" id="dlgrestart"><span>Restart MPC afterwards<small>Unloads the plugin if it is still loaded on a track, and refreshes MPC's plugin list.</small></span></label>
   <p id="dlgsave"><b>Save your project first.</b> MPC will be stopped and started again, and anything unsaved is lost.</p>
   <div class="actions"><button id="no">Cancel</button><button class="primary" id="yes">Install</button></div>
 </dialog>
@@ -1268,12 +1269,18 @@ $("resetf").addEventListener("click", function () {
   S.f = { q: "", kind: S.f.kind, dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
 });
 $("no").addEventListener("click", function () { $("dlg").close(); });
+$("dlg").addEventListener("close", function () { $("dlgrestartl").hidden = true; });
+// the restart choices are remembered: after installing (off until ticked) and after removing (on until unticked)
+$("dlgrestart").addEventListener("change", function () { pref("rmrestart", $("dlgrestart").checked ? "on" : "off"); $("dlgsave").hidden = !$("dlgrestart").checked; });
+$("restarton").checked = pref("restart") === "on";
+$("restarton").addEventListener("change", function () { pref("restart", $("restarton").checked ? "on" : "off"); });
 function chosenDev() { return devItems().filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
 $("rm").addEventListener("click", function () {
   var ch = chosenDev(); S.mode = "remove"; $("dlgsave").hidden = false;
   if (S.method === "vst2") {
     $("dlgsave").hidden = true; text($("dlgtitle"), "Remove from your MPC?"); text($("yes"), "Remove");
-    text($("dlgtxt"), "About to delete: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + ". Each plugin's whole folder goes, including any samples or other files it came with. MPC keeps running; remove the plugin from any track that uses it first.");
+    text($("dlgtxt"), "About to delete: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + ". Each plugin's whole folder goes, including any samples or other files it came with.");
+    $("dlgrestart").checked = pref("rmrestart") !== "off"; $("dlgrestartl").hidden = false; $("dlgsave").hidden = !$("dlgrestart").checked;
     $("dlg").showModal(); return;
   }
   text($("dlgtitle"), "Remove from your MPC?"); text($("yes"), "Remove");
@@ -1363,7 +1370,8 @@ $("yes").addEventListener("click", function () {
   if (S.mode === "remove") {
     var items = chosenDev().map(function (p) { return { root: p.root, folder: p.folder, native: !!p.native }; });
     S.running = true; refresh(); msg($("rmresult"), "Working…"); var rl = $("rmlog"); rl.hidden = false; rl.textContent = "";
-    api("/api/remove", { items: items, confirm: true }).then(function () { poll(0, $("rmlog"), $("rmresult"), S.method === "vst2" ? "Done. The folders are deleted." : "Done. MPC is starting again: the plugins are gone from its list."); })
+    var rr = S.method === "vst2" && $("dlgrestart").checked;
+    api("/api/remove", { items: items, confirm: true, restart: rr }).then(function () { poll(0, $("rmlog"), $("rmresult"), S.method === "vst2" ? (rr ? "Done. The folders are deleted and MPC was restarted." : "Done. The folders are deleted. MPC keeps running: remove the plugin from any track that still uses it.") : "Done. MPC is starting again: the plugins are gone from its list."); })
       .catch(function (e) { S.running = false; refresh(); msg($("rmresult"), e.message, "err"); });
     return;
   }

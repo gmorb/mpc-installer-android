@@ -30,7 +30,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </style></head><body>
 
 <section class="cover">
-<div class="ver">User manual · app version 1.7.0</div>
+<div class="ver">User manual · app version 1.7.1</div>
 <h1>MPC Installer<br>for Android</h1>
 <p class="sub">Install, update and remove VST plugins on an Akai MPC, Force or MPC Sample from your phone: into the VST2 Plugins folder of MPC OS 3.10.1 and later, or the Synths folder of a modded MPC.</p>
 <div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
@@ -89,7 +89,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <h3>VST2 Plugins folder (MPC OS 3.10.1 and later)</h3>
 <p>Under <b>Install to</b> the app lists the cards, USB drives and SSDs that already have a <code>VST2 Plugins</code> folder. A drive without one is listed with a <b>Create VST2 Plugins folder</b> button: tap it on the drive you want, and the app makes the folder and selects it. Cards and USB drives come first; the MPC's internal storage is hidden behind <i>"Use the MPC's internal storage instead (not recommended)"</i>, for the same reason as below, and MPC only notices new plugins there when it starts.</p>
 <p>Plugins from the catalog are made for the older Synths method, so the app <b>converts each one on the fly</b> before sending it, the way inMusic's own conversion tool does: the plugin's folder gets a <code>plugin.json</code> and a <code>version.xml</code>, loses the old installer's files, and is named <i>Manufacturer - VST - Name</i> as MPC expects. The plugin itself is not changed. The app also checks that its library fits your MPC (32-bit or 64-bit).</p>
-<p><b>Restart MPC afterwards</b> is off by default. MPC notices new plugins on cards and USB drives by itself; tick it when a plugin does not show up, or when it was already loaded on a track. A restart loses unsaved work.</p>
+<p><b>Restart MPC afterwards</b> is off by default, and the app remembers your choice. MPC notices new plugins on cards and USB drives by itself; tick it when a plugin does not show up, or when it was already loaded on a track. A restart loses unsaved work. After restarting MPC the app waits until MPC is running again, and says so in the log.</p>
 <h3>Synths folder (modded MPCs)</h3>
 <p>Under <b>Install to</b> the app lists the drives it found under <code>/media</code> that already have a <code>Synths</code> folder, with the free space on each. Pick one. It is chosen for you when there is only one.</p>
 <h4>No Synths folder yet?</h4>
@@ -117,7 +117,12 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <div class="pair"><figure><img src="progress.png"><figcaption>The progress area after a finished install (example data)</figcaption></figure></div>
 <p>The app copies every package to a private folder on the device, stops MPC once, runs each plugin's installer, registers the plugin folders, starts MPC once and removes the temporary copies. MPC is started again even if something fails, and nothing after a failing plugin is installed.</p>
 <h3>If the connection drops</h3>
-<p>Phones sometimes cut a connection (Wi-Fi sleep, a VPN, switching apps). If it drops during the copy, the app reconnects, checks that the device's key is unchanged, and copies once more. Until every copy has finished, nothing is installed and MPC has not been stopped.</p>
+<p>Phones sometimes cut a connection (Wi-Fi sleep, a VPN, switching apps), and stopping or restarting MPC can take the MPC's own Wi-Fi down for a moment. The app copes with both:</p>
+<ul>
+<li>If the connection drops during the copy, the app reconnects, checks that the device's key is unchanged, and copies once more. Until every copy has finished, nothing is installed and MPC has not been stopped.</li>
+<li>Before using a connection that has been idle, the app checks that the MPC still answers. If it does not (for example after MPC restarted), the app reconnects by itself, trying for up to a minute while the MPC's Wi-Fi comes back. You do not need to reconnect by hand.</li>
+<li>Steps that stop and start MPC run to the end on the MPC itself, even if the connection drops halfway, so MPC is always started again. The app reconnects, waits for them to finish and shows the rest of the log.</li>
+</ul>
 
 <h2>7. Remove plugins, and move old ones to VST2 Plugins</h2>
 <h3>Plugins still in a Synths folder (MPC OS 3.10.1+)</h3>
@@ -130,7 +135,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </ol>
 <p><b>Delete without moving.</b> To get rid of old plugins you do not want in VST2 Plugins, tick them and tap <b>Delete…</b> instead. Everything in their folders goes, your own files (ROMs, kits, dumps) included, and so do their entries in MPC's old plugin list (MPC's settings are backed up first, and MPC restarts once).</p>
 <h3>Removing</h3>
-<p><b>VST2 Plugins folder:</b> the list shows the plugins in the VST2 Plugins folders. Removing one deletes its whole folder, including any samples or other files it came with. MPC keeps running; take the plugin off any track that uses it first.</p>
+<p><b>VST2 Plugins folder:</b> the list shows the plugins in the VST2 Plugins folders. Removing one deletes its whole folder, including any samples or other files it came with. <b>Restart MPC afterwards</b> in the confirmation is ticked by default (the app remembers if you untick it): the restart unloads a plugin that is still loaded on a track and refreshes MPC's plugin list. Save your project first. Untick it to leave MPC running.</p>
 <p><b>Synths folder:</b></p>
 <p>Under <b>Device tools</b>, open <b>Remove plugins</b>. It lists the plugin folders on the device. Tick the ones to remove and tap <b>Remove…</b>. The app stops MPC once, backs up MPC's settings, takes the plugin out of the plugin list, deletes the plugin's folder and starts MPC again.</p>
 <ul>
@@ -160,6 +165,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <tr><td>"Not an MPC OS device"</td><td>The address belongs to another computer. Check the IP.</td></tr>
 <tr><td>Install is greyed out</td><td>No install location is chosen. Pick a drive, or create a Synths folder on one (section 5).</td></tr>
 <tr><td>"software caused connection abort"</td><td>The phone cut the connection. The app reconnects and retries once by itself. If it still fails, stay in the app, keep the screen on, and try again. Nothing is installed after a failed copy.</td></tr>
+<tr><td>MPC did not restart, or the app seemed stuck after a restart</td><td>Fixed in 1.7.1: the app now notices a connection the restart left dead and reconnects by itself. If MPC still does not come back within 90 seconds, the log says so: check the MPC and restart it there.</td></tr>
 <tr><td>A plugin is not in MPC's browser (MPC OS 3.10.1+)</td><td>Check Preferences &gt; Enhancements (Beta): Enable Enhancements and External Plugin Support must both be on. Look under External Plugins. If it is still missing, install again with Restart MPC afterwards ticked.</td></tr>
 <tr><td>"needs arm64" or "built for arm32"</td><td>The plugin's library does not fit your MPC: 64-bit MPCs (Live III, XL) need a 64-bit build. Get the other zip, or ask its author for one.</td></tr>
 <tr><td>Plugin only shows "Load Plugin"</td><td>Restart the MPC with the drive in, then register the folders (section 8). The drive may have been mounted noexec at that moment.</td></tr>
@@ -177,5 +183,5 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
 <li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
 </ul>
-<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.7.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.7.1. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
 </body></html>
