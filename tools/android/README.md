@@ -23,7 +23,10 @@ app connects it reads the running MPC's version (`/tmp/com.akaipro.mpc.version`)
 - Catalog release zips (the Synths-folder kind, with `plugin-meta.xml`) are converted on the fly, like the SDK's `tools/legacy_convert.py`:
   the plugin folder keeps its files, gains `plugin.json` (name, manufacturer, version, `format: vst2`, kind, uid as a four-character code,
   `file32` or `file64`) and `version.xml`, loses `plugin-meta.xml` and `mpc-plugin.json`, and is named `<Manufacturer> - VST - <Name>`. The
-  library's ELF header must match the MPC (32-bit or 64-bit). Zips made with the SDK go in as they are.
+  library's ELF header must match the MPC (32-bit or 64-bit). Zips made with the SDK go in as they are; when one is
+  not laid out the way MPC needs but its files are right, the plugin folder is found anywhere in the zip, given the name MPC
+  needs, its binaries located (by file name, else by ELF architecture) and plugin.json corrected, with `"format": "vst2"` added
+  when missing (`tools/desktop/nativefind.go`). Each change is shown on the zip's row and in the install log.
 - Each folder is streamed as a tar into `<drive>/.mpc-installer-stage`, moved into `VST2 Plugins` (an older copy is replaced, and put back
   if the new one's file sizes do not match), and MPC keeps running. **Restart MPC afterwards** is optional and remembered; removing offers it too (ticked by default).
   After a restart the app waits for MPC to come back and reconnects by itself if the restart took the connection down.

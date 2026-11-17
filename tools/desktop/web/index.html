@@ -441,6 +441,13 @@ dialog.sheet::backdrop { background:rgb(8 8 10 / .72); backdrop-filter:blur(6px)
 @keyframes fade-in { from { opacity:0; } }
 @media (prefers-reduced-motion: no-preference) and (max-width:620px) { dialog.sheet[open] { animation:sheet-up 300ms var(--ease-out); } }
 @keyframes sheet-up { from { translate:0 32px; opacity:0; } }
+.fixbox { margin-top:6px; font-size:13.5px; color:var(--muted); }
+.fixbox summary { cursor:pointer; color:var(--accent-text); font-weight:500; list-style:none; }
+.fixbox summary::-webkit-details-marker { display:none; }
+.fixbox summary::before { content:"✓ "; color:var(--ok); }
+.fixbox ul.fixes { margin:6px 0 0; padding:0 0 0 18px; list-style:disc; background:none; box-shadow:none; border:0; max-height:none; overflow:visible; }
+.fixbox ul.fixes li:hover { background:none; }
+.fixbox ul.fixes li { display:list-item; margin:3px 0; padding:0; border:0; background:none; box-shadow:none; min-height:0; color:var(--ink-2); line-height:1.45; overflow-wrap:anywhere; }
 </style>
 </head>
 <body>
@@ -1165,7 +1172,14 @@ function drawUps() {
     cb.addEventListener("change", function () { S.pickUp[p.handle] = cb.checked; refresh(); });
     var t = el("div", "t"), b = el("b", null, p.title); b.appendChild(el("span", "tag", "your zip"));
     if (p.native) b.appendChild(el("span", "tag", "MPC OS 3.10.1 format"));
-    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " · " + mb(p.size) + (p.native ? " · goes into a VST2 Plugins folder as it is" : p.defer ? "" : " · older installer: MPC restarts for this one on its own")));
+    var fx = p.fixes || [];
+    t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " · " + mb(p.size) + (p.native ? (fx.length ? " · goes into a VST2 Plugins folder, put in the shape MPC needs" : " · goes into a VST2 Plugins folder as it is") : p.defer ? "" : " · older installer: MPC restarts for this one on its own")));
+    if (fx.length) {   // the zip was not laid out the way MPC needs, but its files were right: say what the app puts right
+      var one = (p.plugins || []).length === 1, ful = el("ul", "fixes");
+      fx.forEach(function (f) { if (one) f = f.slice(f.indexOf(": ") + 2); ful.appendChild(el("li", null, /^plugin\.json/.test(f) ? f : f.charAt(0).toUpperCase() + f.slice(1))); });
+      var det = el("details", "fixbox"); det.appendChild(el("summary", null, fx.length === 1 ? "1 thing in this zip is put right" : fx.length + " things in this zip are put right"));
+      det.appendChild(ful); t.appendChild(det);
+    }
     var rm = el("button", null, "Remove"); rm.type = "button";
     rm.addEventListener("click", function () { api("/api/discard", { handle: p.handle }).then(function () { S.ups = S.ups.filter(function (x) { return x.handle !== p.handle; }); drawUps(); refresh(); if (S.connected) loadDevice(); }); });
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);

@@ -30,7 +30,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 </style></head><body>
 
 <section class="cover">
-<div class="ver">User manual · app version 1.7.1</div>
+<div class="ver">User manual · app version 1.8.0</div>
 <h1>MPC Installer<br>for Android</h1>
 <p class="sub">Install, update and remove VST plugins on an Akai MPC, Force or MPC Sample from your phone: into the VST2 Plugins folder of MPC OS 3.10.1 and later, or the Synths folder of a modded MPC.</p>
 <div class="warn"><b>Use at your own risk.</b> Plugins from the catalog are community-provided and run as root on your device. They can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. This app is unofficial and not affiliated with or endorsed by Akai Professional.</div>
@@ -81,6 +81,15 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <div class="pair"><figure><img src="details.png"><figcaption>Tap a banner or <i>See full details</i> (example data)</figcaption></figure></div>
 <p><b>Full details.</b> Tap a plugin's banner, or <b>See full details</b> under its description, to open it full screen: the whole banner, the complete description (the list cuts it to two lines), the version, licence, size, which devices it is for and has been tested on, and which MPC models and OS versions people have reported it working on. <b>Tick to install</b> ticks it from there; <b>Close</b>, the ✕ or the back button takes you back to the list. To like a plugin or report it working, use the link to its page on the catalog site (open-mpc.github.io), where you sign in with GitHub.</p>
 <p>You can also add your own release zips with <b>Add plugin zips</b>, which opens the phone's file picker. A zip is checked before it is accepted. Both kinds work: a release zip from the community catalog, and a zip made with inMusic's MPC Plugin Builder SDK (tagged <i>MPC OS 3.10.1 format</i>). Once a zip of yours has installed, the app drops it from the list; one that failed stays, so you can try again.</p>
+<p><b>Zips that are not laid out quite right.</b> MPC needs each plugin as one folder named <code>Manufacturer - VST - Name</code> with its <code>plugin.json</code> and the binaries that file names. Zips passed around are often a little different. As long as the files themselves are right, the app finds the plugin anywhere in the zip and puts it in the shape MPC needs:</p>
+<ul>
+<li>The plugin folder is inside other folders (a release folder, a <code>VST2 Plugins</code> folder, a project's <code>build</code> folder): only the plugin folder is installed.</li>
+<li>The plugin's files were zipped without their folder, or the folder has another name: the folder gets the exact name MPC needs.</li>
+<li>The binaries are not where <code>plugin.json</code> says: they are found by file name, or by the processor they are built for (32-bit or 64-bit ARM), and <code>plugin.json</code> is corrected.</li>
+<li>A <code>plugin.json</code> made before the SDK started requiring <code>"format": "vst2"</code> gets it added.</li>
+<li>Leftovers from a Mac (<code>__MACOSX</code>, <code>.DS_Store</code>) and readme or picture files around the plugin are left out.</li>
+</ul>
+<p>The zip's row says how many things were put right; tap that line to see them. They are also listed in the install log. What cannot be fixed is said plainly: no binary for this MPC's processor (a 64-bit MPC needs an <i>arm64</i> build, a 32-bit one an <i>arm32</i> build), or the same plugin twice in one zip.</p>
 <p>Plugins already on the device are flagged, and so are updates. Catalog downloads are checked against the catalog's checksums before anything is copied; a mismatch installs nothing.</p>
 
 <h2 class="pb">5. Choose the method and where to install</h2>
@@ -165,6 +174,7 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <tr><td>"Not an MPC OS device"</td><td>The address belongs to another computer. Check the IP.</td></tr>
 <tr><td>Install is greyed out</td><td>No install location is chosen. Pick a drive, or create a Synths folder on one (section 5).</td></tr>
 <tr><td>"software caused connection abort"</td><td>The phone cut the connection. The app reconnects and retries once by itself. If it still fails, stay in the app, keep the screen on, and try again. Nothing is installed after a failed copy.</td></tr>
+<tr><td>"has no arm64 build" or "is built for arm32" (a zip of your own)</td><td>The zip only has a build for the other kind of MPC. 64-bit MPCs (Live III, XL, MPC Sample) need the plugin's arm64 build, the others its arm32 build. Ask its maker for the right one.</td></tr>
 <tr><td>MPC did not restart, or the app seemed stuck after a restart</td><td>Fixed in 1.7.1: the app now notices a connection the restart left dead and reconnects by itself. If MPC still does not come back within 90 seconds, the log says so: check the MPC and restart it there.</td></tr>
 <tr><td>A plugin is not in MPC's browser (MPC OS 3.10.1+)</td><td>Check Preferences &gt; Enhancements (Beta): Enable Enhancements and External Plugin Support must both be on. Look under External Plugins. If it is still missing, install again with Restart MPC afterwards ticked.</td></tr>
 <tr><td>"needs arm64" or "built for arm32"</td><td>The plugin's library does not fit your MPC: 64-bit MPCs (Live III, XL) need a 64-bit build. Get the other zip, or ask its author for one.</td></tr>
@@ -183,5 +193,5 @@ figcaption { font-size: 9pt; color: #555; margin-top: 4pt; }
 <li>The app does not offer device patches (such as the 16-pad drum layout). They change Akai's own program and are not for a phone app. If you want one, run its script over SSH as its own guide says.</li>
 <li>Developers: build instructions and internals are in <code>tools/android/README.md</code>. The app is the desktop installer (<code>tools/desktop</code>) in an Android wrapper, so the desktop and Android apps share the same page and behaviour.</li>
 </ul>
-<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.7.1. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
+<p style="color:#666;font-size:9pt;margin-top:18pt">Screens shown use invented example plugins and an example IP address. This manual describes version 1.8.0. Tested by the author on a real MPC from an Android phone; still test a first install with a saved project.</p>
 </body></html>
