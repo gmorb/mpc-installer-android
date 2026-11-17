@@ -385,10 +385,13 @@ func entriesUnder(zr *zip.Reader, dir string, skip map[string]bool) ([]NEntry, i
 		if err != nil {
 			return nil, 0, err
 		}
-		if !strings.HasPrefix(n, dir+"/") {
+		if !under(dir, n) {
 			continue
 		}
 		rel := strings.TrimPrefix(n, dir+"/")
+		if dir == "" {
+			rel = n
+		}
 		if rel == "" || junk(rel) || skip[rel] {
 			continue
 		}
@@ -460,27 +463,36 @@ func (p *Package) NativeFolders(devArch string) ([]NFolder, error) {
 	arch, key := devArchKey(devArch)
 	var out []NFolder
 	if p.Native {
-		for _, dir := range p.NativeDirs {
-			b, err := readZipFile(names[dir+"/plugin.json"], 1<<20)
-			if err != nil {
-				return nil, err
+		for _, r := range p.NativeRoots {
+			bin := r.Bins[key]
+			if bin == "" && r.Bins["file32"] == "" && r.Bins["file64"] == "" {
+				bin = r.Bins["file"]
 			}
-			var pj pluginJSON
-			if err := json.Unmarshal(b, &pj); err != nil {
-				return nil, fmt.Errorf("%s: bad plugin.json: %w", dir, err)
-			}
-			bin := pj.binaryFor(key)
 			if bin == "" {
-				return nil, fmt.Errorf("%s has no %s build in its plugin.json, which this MPC (%s) needs", dir, arch, devArch)
+				return nil, fmt.Errorf("%s has no %s build, which this MPC (%s) needs", r.Name, arch, devArch)
 			}
-			if c, err := cleanName(bin); err != nil || names[dir+"/"+c] == nil {
-				return nil, fmt.Errorf("%s: the binary %q named in plugin.json is not in the zip", dir, bin)
+			head, err := readZipFile(names[zjoin(r.Dir, bin)], 20)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %w", r.Name, err)
 			}
-			ents, links, err := entriesUnder(&zr.Reader, dir, nil)
+			if got, err := elfArch(head); err != nil {
+				return nil, fmt.Errorf("%s: %s: %v", r.Name, bin, err)
+			} else if got != arch {
+				return nil, fmt.Errorf("%s: %s is built for %s, but this MPC (%s) needs %s", r.Name, bin, got, devArch, arch)
+			}
+			skip := map[string]bool{}
+			if r.PJ != nil {
+				skip["plugin.json"] = true
+			}
+			ents, links, err := entriesUnder(&zr.Reader, r.Dir, skip)
 			if err != nil {
 				return nil, err
 			}
-			f := NFolder{Name: dir, ZipPath: p.Path, Title: pj.Name, Version: pj.Version, Entries: ents, Links: links}
+			if r.PJ != nil {
+				ents = append(ents, NEntry{Rel: "plugin.json", Data: r.PJ, Mode: 0o644})
+				sort.Slice(ents, func(i, j int) bool { return ents[i].Rel < ents[j].Rel })
+			}
+			f := NFolder{Name: r.Folder, ZipPath: p.Path, Title: r.Name, Version: r.Version, Entries: ents, Links: links, Notes: r.Fixes}
 			for _, e := range ents {
 				f.Unpacked += e.size()
 			}

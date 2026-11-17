@@ -141,7 +141,7 @@ func TestUIDConversion(t *testing.T) {
 
 func TestSDKZipGoesInAsItIs(t *testing.T) {
 	p := sdkPkg(t)
-	if !p.Native || p.Title != "Wobble" || len(p.NativeDirs) != 1 {
+	if !p.Native || p.Title != "Wobble" || len(p.NativeRoots) != 1 {
 		t.Fatalf("package: %+v", p)
 	}
 	for arch, want := range map[string]string{"armv7l": "", "aarch64": ""} {

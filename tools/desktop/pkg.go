@@ -62,14 +62,15 @@ type Package struct {
 	Unpacked int64      `json:"unpacked"` // what it takes on the device
 	SHA256   string     `json:"sha256"`
 	Source   string     `json:"source"` // "catalog" or "upload"
-	// Native: already in MPC OS 3.10.1's format (made with inMusic's SDK): one or more "<Manufacturer> - VST - <Name>" folders with
-	// a plugin.json each, NativeDirs, and maybe an INSTALL.txt beside them. It goes into VST2 Plugins as it is (native.go).
-	Native     bool     `json:"native"`
-	NativeDirs []string `json:"-"`
-	BundleDirs []string `json:"-"` // a bundle's package folders, in the order of Plugins
-	Key        string   `json:"-"` // set by an install: "catalog:<id>" or "upload:<handle>"
-	Path       string   `json:"-"`
-	Top        string   `json:"-"`
+	// Native: already in MPC OS 3.10.1's format (made with inMusic's SDK): one or more plugin folders with a plugin.json each,
+	// found anywhere in the zip and put in the shape MPC needs when they are not (nativefind.go). They go into VST2 Plugins.
+	Native      bool         `json:"native"`
+	NativeRoots []nativeRoot `json:"-"`
+	Fixes       []string     `json:"fixes,omitempty"` // what was changed so it installs, shown when it is added
+	BundleDirs  []string     `json:"-"`               // a bundle's package folders, in the order of Plugins
+	Key         string       `json:"-"`               // set by an install: "catalog:<id>" or "upload:<handle>"
+	Path        string       `json:"-"`
+	Top         string       `json:"-"`
 }
 
 // cleanName returns the entry name without a trailing slash, or an error for anything that could leave the package folder.
@@ -93,6 +94,15 @@ func symlinkOK(entry, target string) bool {
 	}
 	resolved := path.Clean(path.Join(path.Dir(entry), target))
 	return resolved != ".." && !strings.HasPrefix(resolved, "../")
+}
+
+func hasPluginJSON(names map[string]*zip.File) bool {
+	for n := range names {
+		if n == "plugin.json" || strings.HasSuffix(n, "/plugin.json") {
+			return true
+		}
+	}
+	return false
 }
 
 func OpenPackage(zipPath, source string) (*Package, error) {
@@ -119,18 +129,10 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 			names[n] = f
 		}
 	}
-	var nativeDirs []string // folders with a plugin.json of the SDK's format at their top
-	for t := range tops {
-		if f, ok := names[t+"/plugin.json"]; ok {
-			if b, err := readZipFile(f, 1<<20); err == nil {
-				var pj pluginJSON
-				if json.Unmarshal(b, &pj) == nil && pj.Name != "" && (pj.Format != "" || pj.File != "" || pj.File32 != "" || pj.File64 != "") {
-					nativeDirs = append(nativeDirs, t)
-				}
-			}
-		}
+	roots, err := findNative(zr.File) // plugins in MPC OS 3.10.1's format, wherever they are in the zip
+	if err != nil {
+		return nil, err
 	}
-	sort.Strings(nativeDirs)
 	names = map[string]*zip.File{}
 	for _, f := range zr.File {
 		n, err := cleanName(f.Name)
@@ -138,9 +140,11 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 			return nil, err
 		}
 		first := strings.SplitN(n, "/", 2)[0]
-		if top == "" {
+		if junk(n) {
+			// __MACOSX, .DS_Store and the like: not part of the plugin
+		} else if top == "" {
 			top = first
-		} else if first != top && len(nativeDirs) == 0 {
+		} else if first != top && len(roots) == 0 {
 			return nil, errors.New("the zip must hold one folder (unzip it: you should see a single folder such as Name-1.0.0)")
 		}
 		total += f.UncompressedSize64
@@ -226,29 +230,19 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 		return string(b)
 	}
 	p := &Package{Path: zipPath, Top: top, Source: source, Size: st.Size(), Unpacked: int64(total), Symlinks: links}
-	if len(nativeDirs) > 0 { // made with inMusic's SDK for MPC OS 3.10.1: plugin folders, maybe an INSTALL.txt, nothing else
-		for t := range tops {
-			isDir := false
-			for _, d := range nativeDirs {
-				isDir = isDir || d == t
-			}
-			if !isDir && names[t] != nil && !names[t].FileInfo().IsDir() && regexp.MustCompile(`(?i)^(install|readme|licen[cs]e)[^/]*$`).MatchString(t) {
-				continue
-			}
-			if !isDir {
-				return nil, fmt.Errorf("%s is neither a plugin folder (with a plugin.json) nor an INSTALL.txt: this does not look like a plugin zip made with the MPC Plugin Builder SDK", t)
-			}
-		}
+	if len(roots) > 0 { // made with inMusic's SDK for MPC OS 3.10.1: the plugin folders, wherever they are; the rest is left out
 		var titles []string
-		for _, d := range nativeDirs {
-			b, _ := readZipFile(names[d+"/plugin.json"], 1<<20)
-			var pj pluginJSON
-			json.Unmarshal(b, &pj)
-			titles = append(titles, pj.Name)
-			p.Version = pj.Version
-			p.Plugins = append(p.Plugins, Manifest{Name: pj.Name, Version: pj.Version, Skin: d})
+		for _, r := range roots {
+			titles = append(titles, r.Name)
+			p.Version = r.Version
+			p.Plugins = append(p.Plugins, Manifest{Name: r.Name, Version: r.Version, Skin: r.Folder})
+			for _, f := range r.Fixes {
+				p.Fixes = append(p.Fixes, r.Name+": "+f)
+			}
 		}
-		p.Native, p.NativeDirs, p.Title, p.Top, p.Defer = true, nativeDirs, strings.Join(titles, " + "), "", true
+		p.Native, p.NativeRoots, p.Title, p.Top, p.Defer = true, roots, strings.Join(titles, " + "), "", true
+	} else if top != "" && names[top+"/mpc-plugin.json"] == nil && names[top+"/install.sh"] == nil && hasPluginJSON(names) {
+		return nil, errors.New("this zip has a plugin.json, but not one in MPC OS 3.10.1's format with its binaries: it needs at least name, manufacturer, uid and file32 or file64, and the ARM library it names")
 	} else if _, ok := names[top+"/mpc-plugin.json"]; ok {
 		m, err := readManifest(top)
 		if err != nil {
